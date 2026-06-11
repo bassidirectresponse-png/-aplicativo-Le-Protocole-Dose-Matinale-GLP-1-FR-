@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'app-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'Protocole Pink Salt Burn',
-        short_name: 'Pink Salt',
-        description: 'Votre application personnalisee Protocole Pink Salt Burn.',
+        name: 'Le Protocole Dose Matinale GLP-1',
+        short_name: 'Dose Matinale',
+        description: 'Votre application personnalisée Le Protocole Dose Matinale GLP-1.',
         lang: 'fr',
         theme_color: '#f05d6a',
         background_color: '#fff8f5',

@@ -1,0 +1,68 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          # Clés publiques Supabase (anon/public — destinées au navigateur).
+          VITE_SUPABASE_URL: https://xkrusqyzcdrqkwaahpwz.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrcnVzcXl6Y2RycWt3YWFocHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDA2NzAsImV4cCI6MjA5NjcxNjY3MH0.dvHisHEa-3o2O5MXR03j2mjlHD128uVxoZsVIaHCSKI
+          VITE_VAPID_PUBLIC_KEY: BIscTKqY_Korf76AE9dnhgKwnEdfcZEfkZKR-m0OQaPqZGQ9htAhRbDABjhr558ev6wY6_1d2bEYHhGzhLsdRB4
+        run: npm run build
+
+      - name: SPA fallback + Pages config
+        run: |
+          # GitHub Pages n'a pas de réécriture serveur : on sert l'app sur les 404
+          # pour que les routes (/courses, /login...) fonctionnent au rechargement.
+          cp dist/index.html dist/404.html
+          # Empêche Jekyll de traiter le dossier (sinon fichiers _* ignorés)
+          touch dist/.nojekyll
+          # Domaine personnalisé : défini via la variable de dépôt CUSTOM_DOMAIN.
+          if [ -n "${{ vars.CUSTOM_DOMAIN }}" ]; then
+            echo "${{ vars.CUSTOM_DOMAIN }}" > dist/CNAME
+            echo "CNAME = ${{ vars.CUSTOM_DOMAIN }}"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
