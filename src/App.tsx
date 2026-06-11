@@ -12,6 +12,7 @@ const Courses = React.lazy(() => import('./pages/Courses'));
 const Recipes = React.lazy(() => import('./pages/Recipes'));
 const Calendar = React.lazy(() => import('./pages/Calendar'));
 const Profile = React.lazy(() => import('./pages/Profile'));
+const ProductRecipes = React.lazy(() => import('./pages/ProductRecipes'));
 
 const SUPPORTED_LANGS = ['en', 'pt', 'fr', 'es', 'de', 'it'];
 
@@ -66,6 +67,7 @@ const App: React.FC = () => {
               <Route index element={<Dashboard />} />
               <Route path="courses" element={<Courses />} />
               <Route path="recipes" element={<Recipes />} />
+              <Route path="produit/:productId" element={<ProductRecipes />} />
               <Route path="calendar" element={<Calendar />} />
               <Route path="profile" element={<Profile />} />
             </Route>

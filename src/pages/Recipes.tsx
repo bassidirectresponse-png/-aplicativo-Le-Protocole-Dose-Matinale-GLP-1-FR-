@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  ChefHat, ChevronDown, ChevronUp, Clock3,
+  ArrowLeft, ChefHat, ChevronDown, ChevronUp, Clock3,
   Flame, Sparkles, Star, Zap,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +18,7 @@ interface UserProfile {
 
 const Recipes: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,24 +74,35 @@ const Recipes: React.FC = () => {
   const firstName = profile?.full_name?.split(' ')[0];
 
   return (
-    <div className="pb-28 min-h-screen bg-[#fff7fb]">
-      {/* En-tête */}
-      <div className="px-5 pt-8 pb-5 bg-white border-b border-pink-100">
-        <p className="text-pink-500 text-xs font-bold uppercase tracking-widest">Le Protocole Dose Matinale GLP-1</p>
-        <h1 className="text-3xl font-black text-gray-900 mt-1 leading-tight">
-          {firstName ? `Vos recettes, ${firstName}` : 'Vos recettes'}
-        </h1>
-        <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-          Commencez par le Shot Matinal, puis suivez le menu 4 repas en déficit calorique. Chaque recette indique les quantités, le pas à pas et pourquoi ça marche.
-        </p>
+    <div className="pb-28 min-h-screen bg-[#fdf2f8]">
+      {/* En-tête héros (capa du produit) */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#3b0a23] via-[#7e1d44] to-[#c4456f] text-white">
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-rose-300/20 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-10 w-48 h-48 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+        <div className="relative px-5 pt-6 pb-8">
+          <button
+            onClick={() => navigate('/')}
+            aria-label="Retour à l'accueil"
+            className="inline-flex items-center gap-2 text-white/80 text-sm font-semibold mb-6 cursor-pointer hover:text-white transition-colors duration-200 py-2 pr-3 -ml-1"
+          >
+            <ArrowLeft size={18} /> Accueil
+          </button>
+          <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">Sel rose & vinaigre de cidre</p>
+          <h1 className="font-display text-3xl leading-tight mt-2">
+            Le Protocole Dose Matinale GLP-1
+          </h1>
+          <p className="text-white/85 text-base leading-relaxed mt-3">
+            {firstName ? `${firstName}, votre` : 'Votre'} shot matinal et votre menu 4 repas — quantités, pas à pas et pourquoi ça marche.
+          </p>
+        </div>
       </div>
 
       {/* Mode d'emploi */}
-      <div className="px-5 mt-5">
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-pink-100">
+      <div className="px-5 -mt-4 relative z-10">
+        <div className="bg-white rounded-3xl p-5 shadow-soft border border-white">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles size={18} className="text-pink-500" />
-            <h2 className="font-black text-gray-900">Comment l'utiliser pour mincir</h2>
+            <h2 className="font-bold text-gray-900">Comment l'utiliser pour mincir</h2>
           </div>
           <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
             <p>
@@ -114,7 +127,7 @@ const Recipes: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider">Recette principale</span>
             </div>
 
-            <h2 className="text-2xl font-black mb-3">{shot.title}</h2>
+            <h2 className="font-display text-[26px] mb-3">{shot.title}</h2>
 
             {/* Fonction GIP / GLP-1 */}
             <div className="bg-white/10 rounded-2xl p-4 mb-4 border border-white/20 flex items-start gap-3">
@@ -172,7 +185,7 @@ const Recipes: React.FC = () => {
       {/* Menu 4 repas */}
       <div className="px-5 mt-7">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-black text-gray-900">Menu 4 repas</h2>
+          <h2 className="font-display text-2xl text-gray-900">Menu 4 repas</h2>
           <span className="text-xs font-black text-pink-500 bg-pink-50 px-3 py-1 rounded-full">
             ~{mealPlanTotalKcal} kcal
           </span>
@@ -185,7 +198,7 @@ const Recipes: React.FC = () => {
             return (
               <section
                 key={meal.id}
-                className="bg-white rounded-3xl border border-pink-100 shadow-sm overflow-hidden transition-all"
+                className="bg-white rounded-3xl border border-white shadow-soft overflow-hidden transition-all"
               >
                 <button
                   className="w-full p-5 text-left"
@@ -200,7 +213,7 @@ const Recipes: React.FC = () => {
                       {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
                     </div>
                   </div>
-                  <h3 className="text-lg font-black text-gray-900">{meal.title}</h3>
+                  <h3 className="font-display text-xl text-gray-900">{meal.title}</h3>
                 </button>
 
                 {isExpanded && (

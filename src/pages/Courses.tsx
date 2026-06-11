@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, ChevronRight, Clock, CookingPot, Lock, Play, PlayCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Clock, CookingPot, Lock, Play, PlayCircle } from 'lucide-react';
 import { courseModules, totalLessons } from '../data/courseModules';
 import type { Lesson } from '../data/courseModules';
 import { hasVideo } from '../lib/videoEmbed';
@@ -110,28 +110,39 @@ export const Courses: React.FC = () => {
   const pct = Math.round((completedCount / totalLessons) * 100);
 
   return (
-    <div className="min-h-screen bg-[#fff7fb] pb-28">
-      {/* En-tête */}
-      <div className="px-5 pt-8 pb-5 bg-white border-b border-pink-100">
-        <p className="text-pink-500 text-xs font-bold uppercase tracking-widest">Le Protocole Dose Matinale GLP-1</p>
-        <h1 className="text-3xl font-black text-gray-900 mt-1">Cours vidéo</h1>
-        <p className="text-gray-500 text-sm mt-2 leading-relaxed">
-          5 modules, 10 leçons. Suivez-les dans l'ordre : chaque vidéo s'ouvre ici, dans l'application.
-        </p>
-        {!isLocked && (
-          <div className="mt-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-pink-500 uppercase">{completedCount}/{totalLessons} terminées</span>
-              <span className="text-xs font-bold text-gray-400">{pct}%</span>
+    <div className="min-h-screen bg-[#fdf2f8] pb-28">
+      {/* En-tête héros (capa du produit) */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#1c1320] via-[#3d2030] to-[#8a4a5e] text-white">
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-pink-300/15 blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-10 w-48 h-48 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+        <div className="relative px-5 pt-6 pb-8">
+          <button
+            onClick={() => navigate('/')}
+            aria-label="Retour à l'accueil"
+            className="inline-flex items-center gap-2 text-white/80 text-sm font-semibold mb-6 cursor-pointer hover:text-white transition-colors duration-200 py-2 pr-3 -ml-1"
+          >
+            <ArrowLeft size={18} /> Accueil
+          </button>
+          <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">5 modules · 10 leçons guidées</p>
+          <h1 className="font-display text-3xl leading-tight mt-2">Les Cours Vidéo</h1>
+          <p className="text-white/85 text-base leading-relaxed mt-3">
+            Suivez les leçons dans l'ordre : chaque vidéo s'ouvre ici, dans l'application.
+          </p>
+          {!isLocked && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-white/80 uppercase">{completedCount}/{totalLessons} terminées</span>
+                <span className="text-xs font-bold text-white/60">{pct}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-white/15 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-pink-400 to-rose-400 rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full h-2.5 bg-pink-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full transition-all duration-700"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Bannière : état du verrouillage */}
@@ -175,7 +186,7 @@ export const Courses: React.FC = () => {
           const moduleCompleted = module.lessons.filter(l => progressData[l.number]?.status === 'completed').length;
 
           return (
-            <div key={module.id} className="bg-white rounded-3xl border border-pink-100 shadow-sm overflow-hidden">
+            <div key={module.id} className="bg-white rounded-3xl border border-white shadow-soft overflow-hidden">
               <button
                 onClick={() => setOpenModule(isOpen ? '' : module.id)}
                 className="w-full flex items-center gap-3 p-5 text-left"
@@ -190,7 +201,7 @@ export const Courses: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-black text-pink-500 uppercase tracking-wider">Module {module.number}</p>
-                  <h3 className="font-black text-gray-900 leading-tight">{module.title}</h3>
+                  <h3 className="font-display text-lg text-gray-900 leading-tight">{module.title}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">{module.subtitle}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">

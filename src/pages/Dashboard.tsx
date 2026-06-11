@@ -1,22 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell, CalendarCheck, CheckCircle2, ChevronRight, CookingPot, Download, Flame,
-  LayoutGrid, Lock, PlayCircle, Scale, Sparkles, Target, TrendingDown
+  Bell, CookingPot, Download, Droplet, Flame, Scale, Target, TrendingDown,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { calculateProtocolQuantities, getCaloriePlan } from '../lib/weightPlan';
 import { enablePushNotifications, isPushSupported } from '../lib/pushNotifications';
 import { products } from '../data/products';
-
-// Icônes lucide disponibles pour les cartes produits (voir products.ts -> champ `icon`)
-const PRODUCT_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  Flame,
-  Sparkles,
-  LayoutGrid,
-};
+import { ProductCard } from '../components/products/ProductCard';
 
 interface UserProfile {
   full_name: string;
@@ -32,7 +24,6 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const Dashboard: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -93,14 +84,14 @@ const Dashboard: React.FC = () => {
 
   const handleInstallApp = async () => {
     if (!deferredInstallPrompt) {
-      setInstallStatus("Sur iPhone, ouvrez Partager puis Ajouter a l'ecran d'accueil. Sur Android, utilisez Installer dans le menu du navigateur.");
+      setInstallStatus("Sur iPhone : ouvrez Partager puis « Sur l'écran d'accueil ». Sur Android : « Installer l'application » dans le menu du navigateur.");
       return;
     }
 
     await deferredInstallPrompt.prompt();
     const choice = await deferredInstallPrompt.userChoice;
     setDeferredInstallPrompt(null);
-    setInstallStatus(choice.outcome === 'accepted' ? 'App installee avec succes.' : 'Installation ignoree pour le moment.');
+    setInstallStatus(choice.outcome === 'accepted' ? 'Application installée avec succès.' : 'Installation ignorée pour le moment.');
   };
 
   const handleEnableNotifications = async () => {
@@ -124,7 +115,7 @@ const Dashboard: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-rose-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-14 h-14 rounded-full border-4 border-pink-200 border-t-pink-500 animate-spin" />
-          <p className="text-pink-400 text-sm font-medium">Préparation de votre protocole Dose Matinale GLP-1...</p>
+          <p className="text-pink-400 text-sm font-medium">Préparation de votre espace...</p>
         </div>
       </div>
     );
@@ -132,22 +123,21 @@ const Dashboard: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fff7fb] px-6">
+      <div className="min-h-screen flex items-center justify-center bg-[#fdf2f8] px-6">
         <div className="text-center max-w-xs">
-          <div className="text-5xl mb-4">🌸</div>
-          <h2 className="text-xl font-black text-gray-900 mb-2">Profil introuvable</h2>
+          <h2 className="font-display text-2xl text-gray-900 mb-2">Profil introuvable</h2>
           <p className="text-sm text-gray-500 leading-relaxed mb-6">
             Nous n'avons pas pu charger votre profil. Vérifiez votre connexion et réessayez.
           </p>
           <button
             onClick={() => fetchDashboardData()}
-            className="w-full bg-pink-500 text-white font-black py-3.5 rounded-2xl mb-3"
+            className="w-full bg-pink-500 text-white font-bold py-4 rounded-2xl mb-3 cursor-pointer"
           >
             Réessayer
           </button>
           <button
             onClick={() => navigate('/onboarding')}
-            className="w-full bg-white border border-pink-100 text-pink-600 font-bold py-3.5 rounded-2xl"
+            className="w-full bg-white border border-pink-100 text-pink-600 font-bold py-4 rounded-2xl cursor-pointer"
           >
             Recommencer
           </button>
@@ -162,278 +152,151 @@ const Dashboard: React.FC = () => {
   const kilosLost = profile.current_weight - (latestWeight || profile.current_weight);
   const progressPct = kilosToLose > 0 ? Math.min(100, Math.round((Math.max(0, kilosLost) / kilosToLose) * 100)) : 0;
   const firstName = profile.full_name.split(' ')[0];
-
-  const tutorial = [
-    {
-      icon: PlayCircle,
-      title: '1. Regardez les videos dans l ordre',
-      text: 'Ouvrez Cours et commencez par le chapitre 1. Marquez chaque video comme terminee avant de passer a la suivante.',
-      action: () => navigate('/courses'),
-    },
-    {
-      icon: CookingPot,
-      title: '2. Preparez le shot principal',
-      text: 'Allez dans Recettes pour voir vos doses personnalisees. Faites le shot exactement comme indique, sans sucre ajoute.',
-      action: () => navigate('/recipes'),
-    },
-    {
-      icon: Scale,
-      title: '3. Notez votre poids actuel',
-      text: 'Ajoutez votre poids dans le calendrier aussi souvent que possible. Le profil, les doses et les calories se recalibrent avec ce poids.',
-      action: () => navigate('/calendar'),
-    },
-  ];
+  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="min-h-screen bg-[#fff7fb] pb-28">
-      <div className="px-5 pt-8 pb-5 bg-white border-b border-pink-100">
-        <p className="text-pink-500 text-sm font-bold mb-1">
-          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
-        <h1 className="text-3xl font-black text-gray-900 leading-tight">
-          {t('dashboard.greeting', { name: firstName })}
+    <div className="min-h-screen bg-[#fdf2f8] pb-28">
+
+      {/* ── En-tête personnel ───────────────────────────────────── */}
+      <div className="px-5 pt-9 pb-6">
+        <p className="text-pink-500 text-[13px] font-semibold capitalize">{today}</p>
+        <h1 className="font-display text-[32px] text-gray-900 leading-tight mt-1">
+          Bonjour, {firstName}
         </h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Votre shot Dose Matinale GLP-1, vos vidéos et vos calories du jour au même endroit.
+        <p className="text-gray-500 text-[15px] mt-1.5">
+          Choisissez votre programme du jour.
         </p>
       </div>
 
-      {/* Mes programmes — bibliothèque de produits (multi-produits) */}
-      <div className="px-5 pt-5">
-        <div className="flex items-center gap-2 mb-3">
-          <LayoutGrid size={18} className="text-pink-500" />
-          <h2 className="text-lg font-black text-gray-900">Mes programmes</h2>
-        </div>
-        <div className="flex flex-col gap-3">
-          {products.map(product => {
-            const Icon = PRODUCT_ICONS[product.icon] ?? Flame;
-            const isActive = product.status === 'active';
-            return (
-              <button
-                key={product.id}
-                onClick={() => isActive && product.route && navigate(product.route)}
-                disabled={!isActive}
-                className={`relative text-left rounded-3xl overflow-hidden shadow-lg shadow-pink-200/30 bg-gradient-to-br ${product.gradient} text-white p-5 ${
-                  isActive ? 'active:scale-[0.99] transition' : 'opacity-80'
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                    <Icon size={24} className="text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {product.badge && (
-                      <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full mb-1">
-                        {product.badge}
-                      </span>
-                    )}
-                    <h3 className="font-black text-lg leading-tight">{product.title}</h3>
-                    <p className="text-xs text-white/70 font-semibold mt-0.5">{product.subtitle}</p>
-                    <p className="text-sm text-white/80 leading-relaxed mt-2">{product.description}</p>
-                  </div>
-                  <div className="flex-shrink-0 self-center">
-                    {isActive ? (
-                      <ChevronRight size={22} className="text-white/80" />
-                    ) : (
-                      <Lock size={18} className="text-white/60" />
-                    )}
-                  </div>
-                </div>
-                {!isActive && (
-                  <span className="absolute top-4 right-4 text-[10px] font-black uppercase tracking-wider bg-black/30 px-2 py-1 rounded-full">
-                    Bientôt
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      {/* ── VITRINE : vos programmes (façon Netflix) ────────────── */}
+      <div className="px-5 flex flex-col gap-4">
+        {products.map(product => (
+          <ProductCard key={product.id} product={product} />
+        ))}
       </div>
 
-      <div className="px-5 pt-5">
-        <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-gray-950 via-rose-950 to-pink-800 text-white shadow-xl shadow-pink-200/40">
+      {/* ── Votre journée : doses du shot + cible kcal ──────────── */}
+      <div className="px-5 mt-9">
+        <h2 className="font-display text-[22px] text-gray-900 mb-4">Votre journée</h2>
+
+        <div className="bg-white rounded-[28px] shadow-soft border border-white overflow-hidden">
           <div className="p-5">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center">
+                <Flame size={22} />
+              </div>
               <div>
-                <p className="text-pink-200 text-xs font-bold uppercase tracking-widest">Aujourd hui</p>
-                <h2 className="text-2xl font-black mt-1">Shot actif</h2>
-              </div>
-              <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center">
-                <Flame size={28} className="text-pink-100" />
+                <h3 className="font-bold text-gray-900">Votre shot du jour</h3>
+                <p className="text-[13px] text-gray-500">Doses ajustées à {profile.current_weight} kg</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mt-5">
-              <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                <p className="text-3xl font-black">{pinkSalt}g</p>
-                <p className="text-xs text-pink-100 font-semibold mt-1">sel rose</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="rounded-2xl bg-[#fdf2f8] p-3.5 text-center">
+                <p className="text-xl font-extrabold text-gray-900">{pinkSalt} g</p>
+                <p className="text-[11px] text-gray-500 font-semibold mt-0.5">sel rose</p>
               </div>
-              <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                <p className="text-3xl font-black">{water}ml</p>
-                <p className="text-xs text-pink-100 font-semibold mt-1">eau + {lemon}ml citron</p>
+              <div className="rounded-2xl bg-[#fdf2f8] p-3.5 text-center">
+                <p className="text-xl font-extrabold text-gray-900">{water} ml</p>
+                <p className="text-[11px] text-gray-500 font-semibold mt-0.5">eau tiède</p>
               </div>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/recipes')}
-            className="w-full bg-white text-pink-600 font-black py-4 flex items-center justify-center gap-2"
-          >
-            <CookingPot size={19} />
-            Ouvrir le shot principal
-          </button>
-        </div>
-      </div>
-
-      <div className="px-5 mt-5">
-        <div className="bg-white rounded-3xl p-5 border border-pink-100 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs text-pink-500 font-bold uppercase tracking-widest">App mobile</p>
-              <h2 className="text-lg font-black text-gray-900 mt-1">Installez et recevez les rappels</h2>
-              <p className="text-sm text-gray-500 leading-relaxed mt-2">
-                Gardez le protocole sur votre ecran d'accueil et activez les notifications pour ne pas oublier le shot, les calories et le suivi.
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-500 flex items-center justify-center flex-shrink-0">
-              <Bell size={23} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-5">
-            <button
-              onClick={handleInstallApp}
-              className="rounded-2xl bg-gray-950 text-white py-3.5 px-3 font-black text-sm flex items-center justify-center gap-2 active:scale-[0.99] transition"
-            >
-              <Download size={18} />
-              Installer
-            </button>
-            <button
-              onClick={handleEnableNotifications}
-              disabled={!isPushSupported() || notificationLoading}
-              className="rounded-2xl bg-pink-500 text-white py-3.5 px-3 font-black text-sm flex items-center justify-center gap-2 active:scale-[0.99] transition disabled:opacity-50"
-            >
-              <Bell size={18} />
-              {notificationLoading ? 'Activation...' : 'Notifications'}
-            </button>
-          </div>
-
-          {(installStatus || notificationStatus) && (
-            <div className="mt-4 rounded-2xl bg-pink-50 border border-pink-100 px-4 py-3 text-xs text-gray-600 leading-relaxed">
-              {installStatus && <p>{installStatus}</p>}
-              {notificationStatus && <p className={installStatus ? 'mt-1' : ''}>{notificationStatus}</p>}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="px-5 mt-5">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingDown size={16} className="text-pink-500" />
-              <span className="text-xs font-bold text-gray-400 uppercase">Progression</span>
-            </div>
-            <p className="text-3xl font-black text-gray-900">{Math.max(0, kilosLost).toFixed(1)}<span className="text-base text-gray-300"> kg</span></p>
-            <p className="text-xs text-gray-400 mt-1">perdus jusqu ici</p>
-            <div className="mt-3 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-              <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-          <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Target size={16} className="text-rose-500" />
-              <span className="text-xs font-bold text-gray-400 uppercase">Objectif</span>
-            </div>
-            <p className="text-3xl font-black text-gray-900">{profile.target_weight}<span className="text-base text-gray-300"> kg</span></p>
-            <p className="text-xs text-gray-400 mt-1">{Math.max(0, kilosToLose).toFixed(1)} kg restants</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-5 mt-5">
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={18} className="text-pink-500" />
-            <h2 className="text-lg font-black text-gray-900">Comment evoluer avec l app</h2>
-          </div>
-          <div className="flex flex-col gap-3">
-            {tutorial.map(item => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.title}
-                  onClick={item.action}
-                  className="text-left rounded-2xl bg-pink-50/70 border border-pink-100 p-4 flex gap-3 active:scale-[0.99] transition"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white text-pink-500 flex items-center justify-center flex-shrink-0">
-                    <Icon size={20} />
-                  </div>
-                  <div>
-                    <p className="font-black text-gray-900 text-sm">{item.title}</p>
-                    <p className="text-xs text-gray-500 leading-relaxed mt-1">{item.text}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="px-5 mt-5">
-        <div className="bg-white rounded-3xl overflow-hidden border border-pink-100 shadow-sm">
-          <div className="bg-gradient-to-br from-gray-950 via-rose-950 to-pink-700 text-white p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs text-pink-200 font-bold uppercase tracking-widest">Objectif d aujourd hui</p>
-                <h2 className="text-4xl font-black mt-1">{caloriePlan.target} kcal</h2>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center">
-                <CalendarCheck size={25} className="text-pink-100" />
-              </div>
-            </div>
-            <p className="text-sm text-pink-50 leading-relaxed mt-4">
-              Votre mission: rester proche de cette cible, prendre le shot au bon moment et garder assez de proteines. Pas besoin d etre parfaite, la regularite fait le resultat.
-            </p>
-          </div>
-
-          <div className="p-5">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-2xl bg-pink-50 p-3">
-                <p className="text-[10px] text-pink-500 font-black uppercase">Poids actuel</p>
-                <p className="font-black text-gray-900 mt-1">{profile.current_weight} kg</p>
-              </div>
-              <div className="rounded-2xl bg-gray-50 p-3">
-                <p className="text-[10px] text-gray-400 font-black uppercase">Proteines</p>
-                <p className="font-black text-gray-900 mt-1">{caloriePlan.protein}</p>
-              </div>
-              <div className="rounded-2xl bg-gray-50 p-3">
-                <p className="text-[10px] text-gray-400 font-black uppercase">Eau</p>
-                <p className="font-black text-gray-900 mt-1">{caloriePlan.water}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-pink-100 bg-pink-50/70 p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white text-pink-500 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 size={19} />
-                </div>
-                <div>
-                  <p className="font-black text-gray-900 text-sm">Votre protocole reste ajuste</p>
-                  <p className="text-xs text-gray-600 leading-relaxed mt-1">
-                    Quand vous ajoutez un nouveau poids dans le calendrier, cette cible et les doses du shot se mettent a jour automatiquement.
-                  </p>
-                </div>
+              <div className="rounded-2xl bg-[#fdf2f8] p-3.5 text-center">
+                <p className="text-xl font-extrabold text-gray-900">{lemon} ml</p>
+                <p className="text-[11px] text-gray-500 font-semibold mt-0.5">citron</p>
               </div>
             </div>
 
             <button
               onClick={() => navigate('/recipes')}
-              className="mt-4 w-full rounded-2xl bg-pink-500 text-white font-black py-3.5 flex items-center justify-center gap-2"
+              className="mt-4 w-full bg-gray-950 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer transition-colors duration-200 hover:bg-gray-800"
             >
-              Voir le shot du jour
               <CookingPot size={18} />
+              Préparer mon shot
             </button>
           </div>
+
+          <div className="border-t border-pink-50 grid grid-cols-3 divide-x divide-pink-50">
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-gray-400 uppercase mb-1">
+                <Target size={12} /> Cible
+              </div>
+              <p className="font-extrabold text-gray-900 text-[15px]">{caloriePlan.target} kcal</p>
+            </div>
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-gray-400 uppercase mb-1">
+                <Droplet size={12} /> Eau
+              </div>
+              <p className="font-extrabold text-gray-900 text-[15px]">{caloriePlan.water}</p>
+            </div>
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-gray-400 uppercase mb-1">
+                <TrendingDown size={12} /> Perdus
+              </div>
+              <p className="font-extrabold text-gray-900 text-[15px]">{Math.max(0, kilosLost).toFixed(1)} kg</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Progression vers l'objectif */}
+        <div className="mt-4 bg-white rounded-[28px] shadow-soft border border-white p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Scale size={17} className="text-pink-500" />
+              <h3 className="font-bold text-gray-900 text-[15px]">Objectif : {profile.target_weight} kg</h3>
+            </div>
+            <span className="text-[13px] font-bold text-pink-500">{progressPct}%</span>
+          </div>
+          <div className="w-full h-3 bg-pink-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-pink-400 to-rose-500 rounded-full transition-all duration-700"
+              style={{ width: `${Math.max(3, progressPct)}%` }}
+            />
+          </div>
+          <p className="text-[13px] text-gray-500 mt-3">
+            Encore {Math.max(0, kilosToLose).toFixed(1)} kg — mettez votre poids à jour dans l'onglet Poids pour recalculer vos doses.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Installation & rappels ──────────────────────────────── */}
+      <div className="px-5 mt-6">
+        <div className="bg-white rounded-[28px] shadow-soft border border-white p-5">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-11 h-11 rounded-2xl bg-pink-50 text-pink-500 flex items-center justify-center flex-shrink-0">
+              <Bell size={21} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">Gardez l'app à portée de main</h3>
+              <p className="text-[13px] text-gray-500 leading-relaxed mt-0.5">
+                Installez l'application et activez les rappels du shot.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={handleInstallApp}
+              className="rounded-2xl bg-gray-950 text-white py-3.5 px-3 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors duration-200 hover:bg-gray-800"
+            >
+              <Download size={17} />
+              Installer
+            </button>
+            <button
+              onClick={handleEnableNotifications}
+              disabled={!isPushSupported() || notificationLoading}
+              className="rounded-2xl bg-pink-500 text-white py-3.5 px-3 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors duration-200 hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Bell size={17} />
+              {notificationLoading ? 'Activation...' : 'Rappels'}
+            </button>
+          </div>
+
+          {(installStatus || notificationStatus) && (
+            <div className="mt-4 rounded-2xl bg-pink-50 border border-pink-100 px-4 py-3 text-[13px] text-gray-600 leading-relaxed">
+              {installStatus && <p>{installStatus}</p>}
+              {notificationStatus && <p className={installStatus ? 'mt-1' : ''}>{notificationStatus}</p>}
+            </div>
+          )}
         </div>
       </div>
     </div>

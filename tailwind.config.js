@@ -27,6 +27,11 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
+      },
+      boxShadow: {
+        soft: '0 2px 12px rgba(131, 24, 67, 0.06), 0 8px 32px rgba(131, 24, 67, 0.08)',
+        'soft-lg': '0 4px 16px rgba(131, 24, 67, 0.10), 0 16px 48px rgba(131, 24, 67, 0.14)',
       }
     },
   },
