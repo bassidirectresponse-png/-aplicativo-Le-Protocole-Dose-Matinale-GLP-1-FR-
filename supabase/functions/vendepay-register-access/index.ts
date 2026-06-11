@@ -69,6 +69,17 @@ function randomPassword() {
   return btoa(String.fromCharCode(...bytes)) + 'Aa1!';
 }
 
+// Comparaison à temps constant pour éviter les attaques temporelles sur le secret.
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i += 1) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
+
 function normalizePayload(payload: DeliveryPayload): ProfileInput {
   const email = firstString(payload, [
     ['email'],
@@ -170,10 +181,20 @@ serve(async req => {
     return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
   }
 
+  // FAIL-CLOSED : sans secret configuré, l'endpoint reste fermé.
+  // (Avant, l'absence de secret désactivait toute l'authentification — un
+  //  attaquant pouvait créer des comptes et générer des magic links = account takeover.)
   const configuredSecret = Deno.env.get('N8N_DELIVERY_SECRET');
-  const headerSecret = req.headers.get('x-delivery-secret') || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!configuredSecret) {
+    console.error('N8N_DELIVERY_SECRET is not configured — refusing all requests.');
+    return jsonResponse({ success: false, error: 'Service unavailable' }, 503);
+  }
 
-  if (configuredSecret && headerSecret !== configuredSecret) {
+  const headerSecret = req.headers.get('x-delivery-secret')
+    || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+    || '';
+
+  if (!timingSafeEqual(headerSecret, configuredSecret)) {
     return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
   }
 
@@ -229,7 +250,8 @@ serve(async req => {
   if (createError) {
     const alreadyExists = /already|registered|exists/i.test(createError.message);
     if (!alreadyExists) {
-      return jsonResponse({ success: false, error: createError.message }, 500);
+      console.error('createUser failed:', createError.message);
+      return jsonResponse({ success: false, error: 'Could not register access' }, 500);
     }
     userId = await findUserIdByEmail(supabase, input.email);
     if (!userId) return jsonResponse({ success: false, error: 'Existing user not found' }, 500);
@@ -258,7 +280,8 @@ serve(async req => {
     }, { onConflict: 'id' });
 
   if (profileError) {
-    return jsonResponse({ success: false, error: profileError.message }, 500);
+    console.error('profile upsert failed:', profileError.message);
+    return jsonResponse({ success: false, error: 'Could not save profile' }, 500);
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -282,7 +305,8 @@ serve(async req => {
   });
 
   if (linkError || !linkData.properties?.action_link) {
-    return jsonResponse({ success: false, error: linkError?.message || 'Magic link was not generated' }, 500);
+    console.error('generateLink failed:', linkError?.message);
+    return jsonResponse({ success: false, error: 'Could not generate access link' }, 500);
   }
 
   return jsonResponse({

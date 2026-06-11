@@ -58,8 +58,8 @@ serve(async req => {
   }
 
   const payload = await req.json() as PushRequest;
-  const title = payload.title?.trim() || 'Protocole Pink Salt Burn';
-  const body = payload.body?.trim() || 'Votre rappel du protocole est pret.';
+  const title = payload.title?.trim() || 'Le Protocole Dose Matinale GLP-1';
+  const body = payload.body?.trim() || 'Votre rappel du protocole est prêt.';
   const url = payload.url?.trim() || '/';
 
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
@@ -74,7 +74,8 @@ serve(async req => {
 
   const { data: subscriptions, error } = await query;
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('push_subscriptions query failed:', error.message);
+    return new Response(JSON.stringify({ error: 'Could not load subscriptions' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
