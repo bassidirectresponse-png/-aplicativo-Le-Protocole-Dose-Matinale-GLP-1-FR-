@@ -21,3 +21,15 @@ enable_anonymous_sign_ins = true
 enable_signup = true
 enable_confirmations = false
 double_confirm_changes = false
+
+# Webhook de livraison (appelé par n8n/vendepay, serveur-à-serveur).
+# verify_jwt = false : le gateway ne peut pas valider de JWT ici (n8n n'en a pas).
+# La protection est assurée DANS la fonction par N8N_DELIVERY_SECRET (fail-closed).
+[functions.vendepay-register-access]
+verify_jwt = false
+
+# Envoi de notifications push : invoqué par l'admin connecté (JWT requis).
+# verify_jwt = true : le gateway exige un JWT valide, puis la fonction vérifie
+# que user.id == ADMIN_USER_ID (double contrôle d'autorisation).
+[functions.send-push]
+verify_jwt = true
