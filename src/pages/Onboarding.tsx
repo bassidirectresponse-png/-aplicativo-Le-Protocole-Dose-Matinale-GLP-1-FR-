@@ -72,14 +72,24 @@ const Onboarding: React.FC = () => {
         }
       });
       if (authError) throw authError;
+      if (!data?.user) throw new Error('No user returned from sign-in');
 
-      // L'utilisateur anonyme n'a pas d'email d'auth : on enregistre celui saisi dans le profil.
-      if (data?.user && formData.email) {
-        await supabase
-          .from('user_profiles')
-          .update({ email: formData.email })
-          .eq('id', data.user.id);
-      }
+      // On crée le profil directement (RLS autorise l'upsert de sa propre ligne).
+      // Indépendant du trigger DB -> évite tout écran blanc si le trigger tarde/échoue.
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          id: data.user.id,
+          email: formData.email || '',
+          full_name: formData.fullName,
+          current_weight: parseFloat(formData.currentWeight) || 75,
+          target_weight: parseFloat(formData.targetWeight) || 65,
+          height: parseFloat(formData.height) || 165,
+          age: parseInt(formData.age, 10) || 35,
+          previous_diets: formData.previousDiets || 'none',
+          preferred_language: i18n.language || 'fr',
+        }, { onConflict: 'id' });
+      if (profileError) throw profileError;
 
       navigate('/', { replace: true });
     } catch (err: unknown) {

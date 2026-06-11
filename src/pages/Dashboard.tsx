@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -43,29 +43,42 @@ const Dashboard: React.FC = () => {
   const [notificationStatus, setNotificationStatus] = useState('');
   const [notificationLoading, setNotificationLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('user_profiles').select('*').eq('id', user.id).single();
-        if (profileError) throw profileError;
-
-        const { data: weightData, error: weightError } = await supabase
-          .from('weight_entries').select('weight').eq('user_id', user.id)
-          .order('date', { ascending: false }).limit(1);
-
-        const newestWeight = !weightError && weightData?.length ? Number(weightData[0].weight) : Number(profileData.current_weight);
-        setLatestWeight(newestWeight);
-        setProfile({ ...profileData, current_weight: newestWeight });
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
+  const fetchDashboardData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // maybeSingle() ne jette pas si 0 ligne ; on retente une fois pour couvrir
+      // la course avec la création du profil (trigger / réplication).
+      let profileData = null;
+      for (let attempt = 0; attempt < 2 && !profileData; attempt += 1) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 600));
+        const { data } = await supabase
+          .from('user_profiles').select('*').eq('id', user.id).maybeSingle();
+        profileData = data;
       }
-    };
-    fetchDashboardData();
+      if (!profileData) {
+        setProfile(null);
+        return;
+      }
+
+      const { data: weightData, error: weightError } = await supabase
+        .from('weight_entries').select('weight').eq('user_id', user.id)
+        .order('date', { ascending: false }).limit(1);
+
+      const newestWeight = !weightError && weightData?.length ? Number(weightData[0].weight) : Number(profileData.current_weight);
+      setLatestWeight(newestWeight);
+      setProfile({ ...profileData, current_weight: newestWeight });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   useEffect(() => {
     const ready = (event: Event) => {
@@ -117,7 +130,31 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fff7fb] px-6">
+        <div className="text-center max-w-xs">
+          <div className="text-5xl mb-4">🌸</div>
+          <h2 className="text-xl font-black text-gray-900 mb-2">Profil introuvable</h2>
+          <p className="text-sm text-gray-500 leading-relaxed mb-6">
+            Nous n'avons pas pu charger votre profil. Vérifiez votre connexion et réessayez.
+          </p>
+          <button
+            onClick={() => fetchDashboardData()}
+            className="w-full bg-pink-500 text-white font-black py-3.5 rounded-2xl mb-3"
+          >
+            Réessayer
+          </button>
+          <button
+            onClick={() => navigate('/onboarding')}
+            className="w-full bg-white border border-pink-100 text-pink-600 font-bold py-3.5 rounded-2xl"
+          >
+            Recommencer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const { pinkSalt, lemon, water } = calculateProtocolQuantities(profile.current_weight);
   const caloriePlan = getCaloriePlan(profile.current_weight);
