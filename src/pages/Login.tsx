@@ -38,9 +38,9 @@ const Login: React.FC = () => {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="mx-auto mb-4 w-20 h-20 rounded-3xl bg-white shadow-xl shadow-pink-200/50 border border-pink-100 p-2">
-            <img src="/app-icon.png" alt="Protocole Pink Salt Burn" className="w-full h-full rounded-2xl" />
+            <img src="/app-icon.png" alt="Protocole Dose Matinale GLP-1" className="w-full h-full rounded-2xl" />
           </div>
-          <p className="text-sm font-black text-pink-500 uppercase tracking-widest">Protocole Pink Salt Burn</p>
+          <p className="text-sm font-black text-pink-500 uppercase tracking-widest">Protocole Dose Matinale GLP-1</p>
           <h1 className="text-2xl font-black text-gray-800 mt-2">{t('login.welcome_back')}</h1>
           <p className="text-gray-400 text-sm mt-1">{t('login.subtitle')}</p>
         </div>

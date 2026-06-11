@@ -1,41 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
   ChefHat, ChevronDown, ChevronUp, Clock3,
-  Flame, Heart, Search, Sparkles, Star
+  Flame, Sparkles, Star, Zap,
 } from 'lucide-react';
-import { recipesData } from '../data/recipes';
-import type { MealTime } from '../data/recipes';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { calculateProtocolQuantities, getCaloriePlan } from '../lib/weightPlan';
+import { getCaloriePlan } from '../lib/weightPlan';
+import { getShotMatinal, mealPlan, mealPlanTotalKcal } from '../data/protocolRecipes';
 
 interface UserProfile {
   id: string;
   full_name: string;
   current_weight: number;
   target_weight: number;
-  height: number;
-  age: number;
 }
 
-const FILTERS: Array<MealTime | 'all' | 'favourites'> = ['all', 'morning', 'lunch', 'dinner', 'snack', 'night', 'favourites'];
-
 const Recipes: React.FC = () => {
-  const { t } = useTranslation();
   const { user } = useAuth();
-  const location = useLocation();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
-  const [activeFilter, setActiveFilter] = useState<MealTime | 'all' | 'favourites'>('all');
-  const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
+  const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
         const { data: profileData, error: profileError } = await supabase
           .from('user_profiles')
@@ -51,22 +43,10 @@ const Recipes: React.FC = () => {
           .order('date', { ascending: false })
           .limit(1);
 
-        const currentWeight = latestWeight?.length ? Number(latestWeight[0].weight) : Number(profileData.current_weight);
+        const currentWeight = latestWeight?.length
+          ? Number(latestWeight[0].weight)
+          : Number(profileData.current_weight);
         setProfile({ ...profileData, current_weight: currentWeight });
-
-        const { data: favData, error: favError } = await supabase
-          .from('user_recipe_views')
-          .select('recipe_id, is_favourite')
-          .eq('user_id', user.id)
-          .eq('is_favourite', true);
-
-        if (favError && favError.code !== '42P01') console.error(favError);
-
-        const favMap: Record<string, boolean> = {};
-        favData?.forEach(f => {
-          if (f.is_favourite) favMap[f.recipe_id] = true;
-        });
-        setFavorites(favMap);
       } catch (err) {
         console.error(err);
       } finally {
@@ -77,54 +57,7 @@ const Recipes: React.FC = () => {
     fetchUserData();
   }, [user]);
 
-  useEffect(() => {
-    const scrollTo = (location.state as { scrollTo?: string } | null)?.scrollTo;
-    if (!scrollTo || loading) return;
-    window.setTimeout(() => {
-      setActiveFilter('all');
-      setExpandedRecipe(scrollTo);
-      document.getElementById(`recipe-${scrollTo}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
-  }, [location.state, loading]);
-
-  const toggleFavorite = async (recipeId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!user) return;
-
-    const isFav = !favorites[recipeId];
-    setFavorites(prev => ({ ...prev, [recipeId]: isFav }));
-
-    try {
-      const { data: existing } = await supabase
-        .from('user_recipe_views')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('recipe_id', recipeId)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('user_recipe_views')
-          .update({ is_favourite: isFav, viewed_at: new Date().toISOString() })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('user_recipe_views')
-          .insert({ user_id: user.id, recipe_id: recipeId, is_favourite: isFav });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const getWeightLossCategory = (current: number, target: number) => {
-    const toLose = current - target;
-    if (toLose > 15) return 'high';
-    if (toLose >= 5) return 'medium';
-    return 'low';
-  };
-
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-pink-50 pb-24">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500" />
@@ -132,246 +65,182 @@ const Recipes: React.FC = () => {
     );
   }
 
-  const weightCategory = getWeightLossCategory(profile.current_weight, profile.target_weight);
-  const { pinkSalt, lemon, water, appleCiderVinegar, ginger, cinnamon } = calculateProtocolQuantities(profile.current_weight);
-  const caloriePlan = getCaloriePlan(profile.current_weight);
-  const firstName = profile.full_name.split(' ')[0];
-
-  const filteredRecipes = recipesData.filter(recipe => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'favourites') return favorites[recipe.id];
-    return recipe.mealTime.includes(activeFilter as MealTime);
-  }).sort((a, b) => {
-    if (a.isFeatured) return -1;
-    if (b.isFeatured) return 1;
-
-    const aIsHighProtein = a.titleKey.includes('egg') || a.titleKey.includes('salmon');
-    const aIsLight = a.titleKey.includes('soup') || a.titleKey.includes('chia');
-    const bIsHighProtein = b.titleKey.includes('egg') || b.titleKey.includes('salmon');
-    const bIsLight = b.titleKey.includes('soup') || b.titleKey.includes('chia');
-
-    if (weightCategory === 'high') {
-      if (aIsHighProtein && !bIsHighProtein) return -1;
-      if (!aIsHighProtein && bIsHighProtein) return 1;
-    } else if (weightCategory === 'low') {
-      if (aIsLight && !bIsLight) return -1;
-      if (!aIsLight && bIsLight) return 1;
-    }
-
-    return 0;
-  });
-
-  const getReasonKey = () => {
-    if (weightCategory === 'high') return 'recipes.reason_high_loss';
-    if (weightCategory === 'medium') return 'recipes.reason_med_loss';
-    return 'recipes.reason_low_loss';
-  };
+  // Poids par défaut si pas de profil (75 kg) pour que la page reste utilisable.
+  const weight = profile?.current_weight ?? 75;
+  const shot = getShotMatinal(weight);
+  const caloriePlan = getCaloriePlan(weight);
+  const firstName = profile?.full_name?.split(' ')[0];
 
   return (
     <div className="pb-28 min-h-screen bg-[#fff7fb]">
+      {/* En-tête */}
       <div className="px-5 pt-8 pb-5 bg-white border-b border-pink-100">
-        <p className="text-pink-500 text-xs font-bold uppercase tracking-widest">Recettes</p>
+        <p className="text-pink-500 text-xs font-bold uppercase tracking-widest">Le Protocole Dose Matinale GLP-1</p>
         <h1 className="text-3xl font-black text-gray-900 mt-1 leading-tight">
-          {t('recipes.title', { name: firstName })}
+          {firstName ? `Vos recettes, ${firstName}` : 'Vos recettes'}
         </h1>
         <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-          Le shot Pink Salt reste votre base. Les autres recettes sont des options fit pour soutenir la satiete, les fibres, les proteines et le deficit calorique.
+          Commencez par le Shot Matinal, puis suivez le menu 4 repas en déficit calorique. Chaque recette indique les quantités, le pas à pas et pourquoi ça marche.
         </p>
       </div>
 
+      {/* Mode d'emploi */}
       <div className="px-5 mt-5">
         <div className="bg-white rounded-3xl p-5 shadow-sm border border-pink-100">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles size={18} className="text-pink-500" />
-            <h2 className="font-black text-gray-900">Mode d emploi pour mincir</h2>
+            <h2 className="font-black text-gray-900">Comment l'utiliser pour mincir</h2>
           </div>
           <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
             <p>
-              Prenez le shot principal aux horaires indiques, idealement 15 a 30 minutes avant le premier repas ou en fin d apres-midi si vos envies de sucre arrivent plus tard.
+              Prenez le Shot Matinal à jeun, chaque matin, 15 à 30 minutes avant le petit-déjeuner. La régularité fait toute la différence.
             </p>
             <p>
-              Pour amplifier le resultat, respectez votre cible de {caloriePlan.target} kcal, gardez {caloriePlan.protein} de proteines, buvez {caloriePlan.water} d eau et ajoutez une marche ou des exercices legers.
+              Visez ensuite votre cible de <strong>{caloriePlan.target} kcal</strong>, gardez {caloriePlan.protein} de protéines et buvez {caloriePlan.water} d'eau. Le menu ci-dessous (~{mealPlanTotalKcal} kcal) vous garde déjà en déficit.
             </p>
             <p>
-              Votre poids actuel est {profile.current_weight} kg. Si vous le mettez a jour dans le calendrier, les doses ci-dessous et les calories se recalculent automatiquement.
+              Votre poids actuel est de <strong>{weight} kg</strong>. Mettez-le à jour dans le calendrier pour recalculer automatiquement les doses et les calories.
             </p>
           </div>
         </div>
       </div>
 
+      {/* Shot Matinal — recette vedette */}
       <div className="px-5 mt-5">
-        <div className="flex overflow-x-auto pb-3 gap-2 hide-scrollbar">
-          {FILTERS.map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-colors ${
-                activeFilter === filter
-                  ? 'bg-pink-500 text-white shadow-sm'
-                  : 'bg-white text-gray-500 border border-pink-100 hover:bg-pink-50'
-              }`}
-            >
-              {t(`recipes.filter_${filter}`)}
-            </button>
-          ))}
-        </div>
+        <section className="bg-gradient-to-br from-gray-950 via-rose-950 to-pink-700 rounded-3xl overflow-hidden shadow-xl shadow-pink-200/40 text-white">
+          <div className="p-6">
+            <div className="bg-white/15 px-3 py-1 rounded-full inline-flex items-center gap-1 mb-4">
+              <Star size={14} className="fill-current" />
+              <span className="text-xs font-bold uppercase tracking-wider">Recette principale</span>
+            </div>
+
+            <h2 className="text-2xl font-black mb-3">{shot.title}</h2>
+
+            {/* Fonction GIP / GLP-1 */}
+            <div className="bg-white/10 rounded-2xl p-4 mb-4 border border-white/20 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-pink-500 flex items-center justify-center flex-shrink-0">
+                <Zap size={18} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-pink-200">Fonction</p>
+                <p className="text-sm font-bold leading-snug mt-0.5">{shot.functionTag}</p>
+              </div>
+            </div>
+
+            <p className="text-pink-100 text-sm mb-5 leading-relaxed">{shot.intro}</p>
+
+            {/* Ingrédients */}
+            <div className="bg-white/10 rounded-2xl p-4 mb-4 backdrop-blur-sm border border-white/20">
+              <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+                <ChefHat size={16} /> Ingrédients & quantités
+              </h3>
+              <ul className="space-y-2 text-sm text-pink-50">
+                {shot.ingredients.map((ing, idx) => (
+                  <li key={idx} className="flex justify-between gap-3">
+                    <span>{ing.label}</span>
+                    <span className="font-bold text-white whitespace-nowrap">{ing.amount}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Préparation */}
+            <div className="bg-white/10 rounded-2xl p-4 mb-4 backdrop-blur-sm border border-white/20">
+              <h3 className="font-bold text-sm mb-3">Préparation (pas à pas)</h3>
+              <ol className="space-y-3 text-sm text-pink-50 list-decimal list-inside">
+                {shot.steps.map((step, idx) => (
+                  <li key={idx} className="leading-relaxed pl-1">{step}</li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Pourquoi ça marche */}
+            <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20">
+              <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
+                <Flame size={16} /> Pourquoi ça marche
+              </h3>
+              <p className="text-sm text-pink-50 leading-relaxed">{shot.why}</p>
+              <div className="mt-4 pt-4 border-t border-white/20 text-xs font-medium text-pink-100 flex items-start gap-2">
+                <Clock3 size={14} className="flex-shrink-0 mt-0.5" />
+                <span>{shot.tip}</span>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div className="px-5 mt-1 flex flex-col gap-5">
-        {filteredRecipes.map((recipe) => {
-          const isExpanded = expandedRecipe === recipe.id;
-          const isFav = favorites[recipe.id];
+      {/* Menu 4 repas */}
+      <div className="px-5 mt-7">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl font-black text-gray-900">Menu 4 repas</h2>
+          <span className="text-xs font-black text-pink-500 bg-pink-50 px-3 py-1 rounded-full">
+            ~{mealPlanTotalKcal} kcal
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">Déficit calorique pour accompagner votre perte de poids.</p>
 
-          if (recipe.isFeatured) {
+        <div className="flex flex-col gap-4">
+          {mealPlan.map(meal => {
+            const isExpanded = expandedMeal === meal.id;
             return (
               <section
-                id={`recipe-${recipe.id}`}
-                key={recipe.id}
-                className="bg-gradient-to-br from-gray-950 via-rose-950 to-pink-700 rounded-3xl overflow-hidden shadow-xl shadow-pink-200/40 text-white"
+                key={meal.id}
+                className="bg-white rounded-3xl border border-pink-100 shadow-sm overflow-hidden transition-all"
               >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="bg-white/15 px-3 py-1 rounded-full flex items-center gap-1">
-                      <Star size={14} className="fill-current" />
-                      <span className="text-xs font-bold uppercase tracking-wider">{t('recipes.featured_badge')}</span>
-                    </div>
-                    <button onClick={(e) => toggleFavorite(recipe.id, e)} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
-                      <Heart size={20} className={isFav ? 'fill-white' : ''} />
-                    </button>
-                  </div>
-
-                  <h2 className="text-2xl font-black mb-2">{t(recipe.titleKey)}</h2>
-                  <p className="text-pink-100 text-sm mb-5 leading-relaxed">{t(recipe.descriptionKey)}</p>
-
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                      <p className="text-3xl font-black">{pinkSalt}g</p>
-                      <p className="text-xs text-pink-100 font-semibold mt-1">sel rose</p>
-                    </div>
-                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10">
-                      <p className="text-3xl font-black">{water}ml</p>
-                      <p className="text-xs text-pink-100 font-semibold mt-1">eau citronnee</p>
+                <button
+                  className="w-full p-5 text-left"
+                  onClick={() => setExpandedMeal(isExpanded ? null : meal.id)}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-pink-50 text-pink-600">
+                      {meal.slot}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-gray-400">{meal.kcal} kcal</span>
+                      {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
                     </div>
                   </div>
+                  <h3 className="text-lg font-black text-gray-900">{meal.title}</h3>
+                </button>
 
-                  <div className="bg-white/10 rounded-2xl p-4 mb-4 backdrop-blur-sm border border-white/20">
-                    <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
-                      <ChefHat size={16} /> {t('recipes.ingredients')}
-                    </h3>
-                    <ul className="space-y-2 text-sm text-pink-50">
-                      <li>- {t('recipes.salt_burn.ing_1', { amount: pinkSalt })}</li>
-                      <li>- {t('recipes.salt_burn.ing_2', { amount: water })}</li>
-                      <li>- {t('recipes.salt_burn.ing_3', { amount: lemon })}</li>
-                      <li>- {t('recipes.salt_burn.ing_4', { amount: appleCiderVinegar })}</li>
-                      <li>- {t('recipes.salt_burn.ing_5', { amount: ginger })}</li>
-                      <li>- {t('recipes.salt_burn.ing_6', { amount: cinnamon })}</li>
-                    </ul>
-                  </div>
+                {isExpanded && (
+                  <div className="px-5 pb-5 pt-1 border-t border-pink-50 bg-gray-50/50">
+                    <div className="my-4">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Ingrédients & quantités</h4>
+                      <ul className="space-y-2">
+                        {meal.ingredients.map((ing, idx) => (
+                          <li key={idx} className="text-sm text-gray-700 flex justify-between gap-3">
+                            <span className="flex items-start gap-2">
+                              <span className="text-pink-300">-</span> {ing.label}
+                            </span>
+                            <span className="font-bold text-gray-900 whitespace-nowrap">{ing.amount}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20">
-                    <h3 className="font-bold text-sm mb-3">{t('recipes.preparation')}</h3>
-                    <ol className="space-y-3 text-sm text-pink-50 list-decimal list-inside">
-                      {recipe.stepsKeys.map((stepKey, idx) => (
-                        <li key={idx} className="leading-relaxed pl-1 pb-1">{t(stepKey)}</li>
-                      ))}
-                    </ol>
-                    <div className="mt-4 pt-4 border-t border-white/20 text-xs font-medium text-pink-100">
-                      <Clock3 size={14} className="inline mr-1" />
-                      {t(recipe.timeKey)}
+                    <div className="mb-4">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Préparation (pas à pas)</h4>
+                      <ol className="space-y-3">
+                        {meal.steps.map((step, idx) => (
+                          <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                            <span className="font-bold text-pink-300 w-4">{idx + 1}.</span>
+                            <span className="flex-1">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    <div className="bg-pink-50 rounded-xl p-3 text-sm text-pink-800 flex items-start gap-2">
+                      <Flame size={15} className="text-pink-500 flex-shrink-0 mt-0.5" />
+                      <p><span className="font-bold">Pourquoi ça marche :</span> {meal.why}</p>
                     </div>
                   </div>
-                </div>
+                )}
               </section>
             );
-          }
-
-          return (
-            <section
-              id={`recipe-${recipe.id}`}
-              key={recipe.id}
-              className="bg-white rounded-3xl border border-pink-100 shadow-sm overflow-hidden transition-all duration-300"
-            >
-              <div
-                className="p-5 cursor-pointer"
-                onClick={() => setExpandedRecipe(isExpanded ? null : recipe.id)}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex gap-2">
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md ${
-                      recipe.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                        recipe.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
-                          'bg-red-100 text-red-700'
-                    }`}>
-                      {t(`recipes.difficulty_${recipe.difficulty}`)}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md bg-pink-50 text-pink-600">
-                      {t(`recipes.filter_${recipe.mealTime[0]}`)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => toggleFavorite(recipe.id, e)}
-                      className="text-gray-400 hover:text-pink-500 transition-colors"
-                    >
-                      <Heart size={20} className={isFav ? 'fill-pink-500 text-pink-500' : ''} />
-                    </button>
-                    {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-black text-gray-900 mb-1">{t(recipe.titleKey)}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2">{t(recipe.descriptionKey)}</p>
-
-                <div className="mt-4 bg-pink-50 rounded-xl p-3 text-xs text-pink-800 font-medium flex items-start gap-2">
-                  <Flame size={14} className="text-pink-500 flex-shrink-0 mt-0.5" />
-                  <p>{t(getReasonKey())}</p>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="px-5 pb-5 pt-2 border-t border-pink-50 bg-gray-50/50">
-                  <div className="mb-5">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{t('recipes.ingredients')}</h4>
-                    <ul className="space-y-2">
-                      {recipe.ingredientsKeys.map((ingKey, idx) => (
-                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                          <span className="text-pink-300">-</span> {t(ingKey)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">{t('recipes.preparation')}</h4>
-                    <ol className="space-y-3">
-                      {recipe.stepsKeys.map((stepKey, idx) => (
-                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                          <span className="font-bold text-pink-300 w-4">{idx + 1}.</span>
-                          <span className="flex-1">{t(stepKey)}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-gray-200">
-                    <div className="flex flex-col gap-1 text-sm">
-                      <span className="font-bold text-gray-600">Meilleur moment: <span className="text-pink-600 font-medium">{t(recipe.timeKey)}</span></span>
-                      <span className="font-bold text-gray-600">Benefice: <span className="text-gray-500 font-normal">{t(recipe.benefitKey)}</span></span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
-          );
-        })}
-
-        {filteredRecipes.length === 0 && (
-          <div className="bg-white rounded-3xl p-8 text-center border border-pink-100 shadow-sm mt-4">
-            <Search className="mx-auto text-pink-200 mb-3" size={32} />
-            <h3 className="text-gray-800 font-bold mb-1">Aucune recette trouvee</h3>
-            <p className="text-gray-500 text-sm">Essayez un autre filtre.</p>
-          </div>
-        )}
+          })}
+        </div>
       </div>
     </div>
   );

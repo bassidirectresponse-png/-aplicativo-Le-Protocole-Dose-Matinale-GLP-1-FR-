@@ -2,13 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell, CalendarCheck, CheckCircle2, CookingPot, Download, Flame, PlayCircle,
-  Scale, Sparkles, Target, TrendingDown
+  Bell, CalendarCheck, CheckCircle2, ChevronRight, CookingPot, Download, Flame,
+  LayoutGrid, Lock, PlayCircle, Scale, Sparkles, Target, TrendingDown
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { calculateProtocolQuantities, getCaloriePlan } from '../lib/weightPlan';
 import { enablePushNotifications, isPushSupported } from '../lib/pushNotifications';
+import { products } from '../data/products';
+
+// Icônes lucide disponibles pour les cartes produits (voir products.ts -> champ `icon`)
+const PRODUCT_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+  Flame,
+  Sparkles,
+  LayoutGrid,
+};
 
 interface UserProfile {
   full_name: string;
@@ -103,7 +111,7 @@ const Dashboard: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-rose-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-14 h-14 rounded-full border-4 border-pink-200 border-t-pink-500 animate-spin" />
-          <p className="text-pink-400 text-sm font-medium">Preparation de votre protocole Pink Salt...</p>
+          <p className="text-pink-400 text-sm font-medium">Préparation de votre protocole Dose Matinale GLP-1...</p>
         </div>
       </div>
     );
@@ -149,8 +157,60 @@ const Dashboard: React.FC = () => {
           {t('dashboard.greeting', { name: firstName })}
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Votre shot Pink Salt, vos videos et vos calories du jour au meme endroit.
+          Votre shot Dose Matinale GLP-1, vos vidéos et vos calories du jour au même endroit.
         </p>
+      </div>
+
+      {/* Mes programmes — bibliothèque de produits (multi-produits) */}
+      <div className="px-5 pt-5">
+        <div className="flex items-center gap-2 mb-3">
+          <LayoutGrid size={18} className="text-pink-500" />
+          <h2 className="text-lg font-black text-gray-900">Mes programmes</h2>
+        </div>
+        <div className="flex flex-col gap-3">
+          {products.map(product => {
+            const Icon = PRODUCT_ICONS[product.icon] ?? Flame;
+            const isActive = product.status === 'active';
+            return (
+              <button
+                key={product.id}
+                onClick={() => isActive && product.route && navigate(product.route)}
+                disabled={!isActive}
+                className={`relative text-left rounded-3xl overflow-hidden shadow-lg shadow-pink-200/30 bg-gradient-to-br ${product.gradient} text-white p-5 ${
+                  isActive ? 'active:scale-[0.99] transition' : 'opacity-80'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <Icon size={24} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {product.badge && (
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full mb-1">
+                        {product.badge}
+                      </span>
+                    )}
+                    <h3 className="font-black text-lg leading-tight">{product.title}</h3>
+                    <p className="text-xs text-white/70 font-semibold mt-0.5">{product.subtitle}</p>
+                    <p className="text-sm text-white/80 leading-relaxed mt-2">{product.description}</p>
+                  </div>
+                  <div className="flex-shrink-0 self-center">
+                    {isActive ? (
+                      <ChevronRight size={22} className="text-white/80" />
+                    ) : (
+                      <Lock size={18} className="text-white/60" />
+                    )}
+                  </div>
+                </div>
+                {!isActive && (
+                  <span className="absolute top-4 right-4 text-[10px] font-black uppercase tracking-wider bg-black/30 px-2 py-1 rounded-full">
+                    Bientôt
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="px-5 pt-5">

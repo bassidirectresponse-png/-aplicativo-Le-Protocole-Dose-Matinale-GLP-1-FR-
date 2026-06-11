@@ -12,7 +12,7 @@
   "onboarding": {
     "welcome_skip": "Hai già un account? Accedi",
     "welcome_title": "Grazie per il tuo acquisto!",
-    "welcome_subtitle": "Votre Protocole Pink Salt Burn est pret. Creez votre compte gratuit pour acceder a votre shot personnalise.",
+    "welcome_subtitle": "Votre Protocole Dose Matinale GLP-1 est pret. Creez votre compte gratuit pour acceder a votre shot personnalise.",
     "steps_title": "Come accedere al tuo protocollo:",
     "step_guide_1": "Rispondi a 4 domande rapide sul tuo corpo",
     "step_guide_2": "Crea il tuo account gratuito (ci vogliono 30 secondi)",
@@ -49,7 +49,7 @@
   },
   "dashboard": {
     "greeting": "Ciao, {{name}}!",
-    "recipe_title": "Votre shot Pink Salt Burn personnalise",
+    "recipe_title": "Votre shot Dose Matinale GLP-1 personnalise",
     "progress_title": "Il Tuo Progresso",
     "lost": "Hai perso {{amount}} kg finora!",
     "tip_title": "Consiglio del Giorno",
@@ -82,7 +82,7 @@
     "step1_title": "Perché il Tuo Corpo è Bloccato",
     "step1_desc": "Comprendi il meccanismo ormonale dietro l'aumento di peso e perché tutto ciò che hai provato prima ha fallito.",
     "step2_title": "Le shot complet et l application",
-    "step2_desc": "Apprenez a preparer le Protocole Pink Salt Burn et a utiliser l application pour ajuster vos doses.",
+    "step2_desc": "Apprenez a preparer le Protocole Dose Matinale GLP-1 et a utiliser l application pour ajuster vos doses.",
     "step3_title": "I Tuoi Primi Quindici Giorni",
     "step3_desc": "Mettez en place la routine: poids, videos, shot principal, calories et repas simples.",
     "step4_title": "Corpo Definito",
@@ -106,7 +106,7 @@
   },
   "login": {
     "welcome_back": "Bentornata!",
-    "subtitle": "Connectez-vous pour retrouver votre protocole Pink Salt",
+    "subtitle": "Connectez-vous pour retrouver votre protocole Dose Matinale GLP-1",
     "email_placeholder": "nome@email.com",
     "password_placeholder": "La tua password",
     "submit": "Accedi",
@@ -126,7 +126,7 @@
     "refund_cta": "Richiedi rimborso →",
     "faq_title": "Domande Frequenti",
     "faq_q1": "Come e quando devo prendere il protocollo?",
-    "faq_a1": "Prenez le shot Pink Salt Burn 15 a 30 minutes avant le premier repas, ou en fin d apres-midi si vos envies arrivent plus tard. Melangez le sel rose dans l eau, puis ajoutez citron, vinaigre de cidre, gingembre et cannelle. N ajoutez pas de sucre.",
+    "faq_a1": "Prenez le shot Dose Matinale GLP-1 15 a 30 minutes avant le premier repas, ou en fin d apres-midi si vos envies arrivent plus tard. Melangez le sel rose dans l eau, puis ajoutez citron, vinaigre de cidre, gingembre et cannelle. N ajoutez pas de sucre.",
     "faq_q2": "Cosa fare se non vedo risultati nella prima settimana?",
     "faq_a2": "I risultati variano da persona a persona. Nei primi 7 giorni il tuo corpo si sta adattando. Continua a registrare il peso ogni giorno. Se dopo 14 giorni non vedi nulla, contatta il nostro team.",
     "faq_q3": "Il protocollo è sicuro con un trattamento medico in corso?",
@@ -157,7 +157,7 @@
     "reason_med_loss": "Choisie pour un equilibre entre fibres, proteines et repas faciles a tenir.",
     "reason_low_loss": "Choisie pour une routine legere, fit et durable.",
     "salt_burn": {
-      "title": "Shot Pink Salt Burn",
+      "title": "Shot Dose Matinale GLP-1",
       "description": "Le shot principal ajuste a votre poids actuel pour soutenir la routine minceur.",
       "benefit": "Hydratation, controle des envies et routine simple avant les repas.",
       "time": "15 a 30 minutes avant le premier repas, ou en fin d apres-midi si les envies arrivent plus tard.",
@@ -172,7 +172,7 @@
       "step_3": "Buvez lentement. Ne depassez pas une dose par jour et gardez votre cible calorique."
     },
     "morning_salt": {
-      "title": "Eau Pink Salt citron du matin",
+      "title": "Eau Dose Matinale GLP-1 citron du matin",
       "description": "Une version douce pour commencer la journee sans boisson sucree.",
       "benefit": "Hydratation, routine metabolique et controle des fringales du matin.",
       "time": "Au reveil ou 20 minutes avant le petit-dejeuner",
@@ -196,7 +196,7 @@
       "step_1": "Melangez, buvez lentement, puis evitez de reprendre des calories apres."
     },
     "gelatin_burn": {
-      "title": "Shot Pink Salt Burn",
+      "title": "Shot Dose Matinale GLP-1",
       "description": "Le shot principal ajuste a votre poids actuel pour soutenir la routine minceur.",
       "benefit": "Hydratation, controle des envies et routine simple avant les repas.",
       "time": "15 a 30 minutes avant le premier repas, ou en fin d apres-midi si les envies arrivent plus tard.",

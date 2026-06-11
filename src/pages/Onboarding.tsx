@@ -35,7 +35,6 @@ const Onboarding: React.FC = () => {
 
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [step, setStep] = useState(0);
-  const [signupSuccess, setSignupSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -56,13 +55,13 @@ const Onboarding: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: authError } = await supabase.auth.signInWithOtp({
-        email: formData.email,
+      // Accès direct : on crée une session anonyme instantanée (aucun email à confirmer).
+      // Le trigger Supabase crée le profil à partir de ces métadonnées.
+      const { data, error: authError } = await supabase.auth.signInAnonymously({
         options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: formData.fullName,
+            email: formData.email,
             current_weight: parseFloat(formData.currentWeight),
             target_weight: parseFloat(formData.targetWeight),
             height: parseFloat(formData.height),
@@ -73,13 +72,18 @@ const Onboarding: React.FC = () => {
         }
       });
       if (authError) throw authError;
-      if (data?.session) {
-        navigate('/', { replace: true });
-      } else {
-        setSignupSuccess(true);
+
+      // L'utilisateur anonyme n'a pas d'email d'auth : on enregistre celui saisi dans le profil.
+      if (data?.user && formData.email) {
+        await supabase
+          .from('user_profiles')
+          .update({ email: formData.email })
+          .eq('id', data.user.id);
       }
+
+      navigate('/', { replace: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('onboarding.error_generic', 'An error occurred. Please try again.');
+      const message = err instanceof Error ? err.message : t('onboarding.error_generic', 'Une erreur est survenue. Réessayez.');
       setError(message);
     } finally {
       setLoading(false);
@@ -91,33 +95,6 @@ const Onboarding: React.FC = () => {
   const progress = step === 0 ? 0 : (step / (totalSteps - 1)) * 100;
   const currentStepMeta = step >= 1 && step <= 4 ? STEPS_CONFIG[step - 1] : null;
   const currentValue = currentStepMeta ? formData[currentStepMeta.key as keyof typeof formData] : '';
-
-  // ── Email confirmation screen ──────────────────────────────────────
-  if (signupSuccess) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-md text-center animate-fade-in">
-          <div className="text-7xl mb-6">📧</div>
-          <h2 className="text-2xl font-black text-gray-800 mb-3">
-            {t('onboarding.confirm_title', 'Check your email!')}
-          </h2>
-          <p className="text-gray-500 leading-relaxed mb-8 max-w-xs mx-auto">
-            {t('onboarding.confirm_desc', 'We sent a confirmation link to')}{' '}
-            <span className="font-bold text-pink-500">{formData.email}</span>.{' '}
-            {t('onboarding.confirm_desc2', 'Click the link to activate your account.')}
-          </p>
-          <div className="bg-pink-50 border border-pink-100 rounded-2xl p-5 text-sm text-pink-700 font-medium mb-8">
-            💡 {t('onboarding.confirm_tip', 'After confirming, come back and')}{' '}
-            <Link to="/login" className="underline font-bold">{t('common.login', 'log in')}</Link>{' '}
-            {t('onboarding.confirm_tip2', 'to see your personalized dashboard.')}
-          </div>
-          <button onClick={() => setSignupSuccess(false)} className="text-xs text-pink-500 underline">
-            {t('onboarding.confirm_retry', "Didn't receive it? Try again")}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex flex-col" onClick={() => { if (showLangMenu) setShowLangMenu(false); }}>
@@ -204,13 +181,13 @@ const Onboarding: React.FC = () => {
               {/* Thank you card */}
               <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-3xl p-6 text-white text-center mb-6 shadow-xl shadow-pink-200/50">
                 <div className="mx-auto mb-4 w-20 h-20 rounded-3xl bg-white/95 shadow-xl shadow-pink-900/10 p-2">
-                  <img src="/app-icon.png" alt="Pink Salt Burn" className="w-full h-full rounded-2xl" />
+                  <img src="/app-icon.png" alt="Dose Matinale GLP-1" className="w-full h-full rounded-2xl" />
                 </div>
                 <h1 className="text-2xl font-black leading-tight mb-2">
                   {t('onboarding.welcome_title', 'Thank you for your purchase!')}
                 </h1>
                 <p className="text-pink-100 text-sm leading-relaxed">
-                  {t('onboarding.welcome_subtitle', 'Your Pink Salt Burn Protocol is ready. Create your free account to access your personalized shot.')}
+                  {t('onboarding.welcome_subtitle', 'Your Dose Matinale GLP-1 Protocol is ready. Create your free account to access your personalized shot.')}
                 </p>
               </div>
 
@@ -344,7 +321,7 @@ const Onboarding: React.FC = () => {
                       type={type}
                       placeholder={placeholder}
                       autoComplete={autoComplete}
-                      required
+                      required={key === 'fullName'}
                       className="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-gray-800 font-semibold outline-none focus:border-pink-400 focus:ring-4 focus:ring-pink-50 transition-all"
                       value={formData[key as keyof typeof formData]}
                       onChange={e => updateFormData(key, e.target.value)}
@@ -353,7 +330,7 @@ const Onboarding: React.FC = () => {
                 ))}
                 <button
                   type="submit"
-                  disabled={loading || !formData.fullName || !formData.email}
+                  disabled={loading || !formData.fullName}
                   className="w-full mt-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold py-5 rounded-2xl shadow-lg shadow-pink-200 hover:from-pink-600 hover:to-rose-600 transition-all disabled:opacity-40 text-lg flex items-center justify-center gap-2"
                 >
                   {loading

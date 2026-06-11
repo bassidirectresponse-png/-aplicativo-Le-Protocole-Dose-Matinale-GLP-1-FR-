@@ -50,7 +50,7 @@ export const InstallPrompt: React.FC = () => {
     <div className="fixed bottom-20 left-0 right-0 px-4 z-40 animate-slide-up">
       <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-2xl p-4 shadow-xl text-white flex flex-col gap-3">
         <div>
-          <h4 className="font-bold text-lg mb-1">Installer Protocole Pink Salt Burn</h4>
+          <h4 className="font-bold text-lg mb-1">Installer Protocole Dose Matinale GLP-1</h4>
           <p className="text-sm opacity-90">Add to your home screen for easy daily tracking and recipes.</p>
         </div>
         <div className="flex gap-3">
