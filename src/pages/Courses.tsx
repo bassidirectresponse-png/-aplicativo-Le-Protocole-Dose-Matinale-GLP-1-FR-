@@ -9,22 +9,19 @@ import {
   CheckCircle2,
   ChevronRight,
   CookingPot,
+  Flame,
   FlaskConical,
   Lock,
+  MessagesSquare,
+  Moon,
   Play,
   PlayCircle,
   Sparkles,
   Trophy,
 } from 'lucide-react';
-import { lessons, totalLessons, lessonHasVideo } from '../data/courseModules';
+import { lessons, totalLessons, lessonReady } from '../data/courseModules';
 import type { Lesson } from '../data/courseModules';
 import { CourseVideoModal } from '../components/video/CourseVideoModal';
-
-// Les cours se débloquent ce nombre de jours après l'achat (création du compte).
-// Mettez une valeur élevée (ex: 9999) pour tout garder verrouillé,
-// ou 0 pour tout débloquer immédiatement.
-const UNLOCK_AFTER_DAYS = 7;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Mapping nom d'icône (data) -> composant lucide.
 const THEME_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
@@ -33,6 +30,9 @@ const THEME_ICONS: Record<string, React.FC<{ size?: number; className?: string }
   CalendarDays,
   Sparkles,
   Trophy,
+  Flame,
+  Moon,
+  MessagesSquare,
 };
 
 interface CourseProgress {
@@ -47,15 +47,6 @@ export const Courses: React.FC = () => {
   const [progressData, setProgressData] = useState<Record<number, CourseProgress>>({});
   const [loading, setLoading] = useState(true);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-
-  // ── Verrouillage temporisé : 7 jours après l'achat ──────────────────
-  const createdAt = user?.created_at ? new Date(user.created_at) : null;
-  const unlockAt = createdAt ? new Date(createdAt.getTime() + UNLOCK_AFTER_DAYS * DAY_MS) : null;
-  const now = new Date();
-  const isLocked = !unlockAt || now < unlockAt;
-  const daysLeft = unlockAt
-    ? Math.max(0, Math.ceil((unlockAt.getTime() - now.getTime()) / DAY_MS))
-    : UNLOCK_AFTER_DAYS;
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -108,8 +99,7 @@ export const Courses: React.FC = () => {
   };
 
   const handleOpenLesson = (lesson: Lesson) => {
-    if (isLocked) return; // verrouillé : on n'ouvre pas
-    if (!lessonHasVideo(lesson)) return; // vidéo pas encore prête
+    if (!lessonReady(lesson)) return; // « Prochainement » : on n'ouvre pas
     setActiveLesson(lesson);
     if (progressData[lesson.number]?.status !== 'completed') {
       updateProgress(lesson.number, 'in_progress');
@@ -130,7 +120,10 @@ export const Courses: React.FC = () => {
   }
 
   const completedCount = Object.values(progressData).filter(p => p.status === 'completed').length;
-  const pct = Math.round((completedCount / totalLessons) * 100);
+  const pct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+  // Index de la première leçon « Prochainement » (pour insérer un séparateur).
+  const firstComingSoon = lessons.findIndex(l => !lessonReady(l));
 
   return (
     <div className="min-h-screen bg-[#fdf2f8] pb-28">
@@ -147,69 +140,45 @@ export const Courses: React.FC = () => {
             <ArrowLeft size={18} /> Accueil
           </button>
           <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">
-            {totalLessons} leçons · Programme vidéo
+            Programme vidéo · {totalLessons} leçons disponibles
           </p>
           <h1 className="font-display text-3xl leading-tight mt-2">Les Cours Vidéo</h1>
           <p className="text-white/85 text-base leading-relaxed mt-3">
             Suivez les leçons dans l'ordre : chaque vidéo s'ouvre ici, dans l'application.
           </p>
-          {!isLocked && (
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-white/80 uppercase">
-                  {completedCount}/{totalLessons} terminées
-                </span>
-                <span className="text-xs font-bold text-white/60">{pct}%</span>
-              </div>
-              <div className="w-full h-2.5 bg-white/15 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-pink-400 to-rose-400 rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+          <div className="mt-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-white/80 uppercase">
+                {completedCount}/{totalLessons} terminées
+              </span>
+              <span className="text-xs font-bold text-white/60">{pct}%</span>
             </div>
-          )}
+            <div className="w-full h-2.5 bg-white/15 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-pink-400 to-rose-400 rounded-full transition-all duration-700"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Bannière : état du verrouillage */}
+      {/* Bannière d'accueil */}
       <div className="px-5 mt-5">
-        {isLocked ? (
-          <div className="bg-gray-950 text-white rounded-3xl p-5 shadow-xl shadow-pink-200/40">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-pink-500 flex items-center justify-center flex-shrink-0">
-                <Lock size={22} />
-              </div>
-              <div>
-                <h2 className="font-black text-lg">Vos cours arrivent bientôt</h2>
-                <p className="text-sm text-gray-300 leading-relaxed mt-1">
-                  Les vidéos se débloquent <strong>7 jours après l'achat</strong>.
-                  {daysLeft > 0 && (
-                    <>
-                      {' '}
-                      Encore <strong>{daysLeft} {daysLeft > 1 ? 'jours' : 'jour'}</strong>.
-                    </>
-                  )}
-                </p>
-              </div>
+        <div className="bg-gray-950 text-white rounded-3xl p-5 shadow-xl shadow-pink-200/40">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-pink-500 flex items-center justify-center flex-shrink-0">
+              <PlayCircle size={24} />
+            </div>
+            <div>
+              <h2 className="font-black text-lg">Avant de commencer</h2>
+              <p className="text-sm text-gray-300 leading-relaxed mt-1">
+                Regardez les leçons dans l'ordre, de « Pourquoi votre corps est bloqué » jusqu'au
+                maintien de vos résultats. De nouvelles leçons arrivent régulièrement.
+              </p>
             </div>
           </div>
-        ) : (
-          <div className="bg-gray-950 text-white rounded-3xl p-5 shadow-xl shadow-pink-200/40">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-pink-500 flex items-center justify-center flex-shrink-0">
-                <PlayCircle size={24} />
-              </div>
-              <div>
-                <h2 className="font-black text-lg">Avant de commencer</h2>
-                <p className="text-sm text-gray-300 leading-relaxed mt-1">
-                  Regardez les leçons dans l'ordre, de « Pourquoi votre corps est bloqué » jusqu'au
-                  maintien de vos résultats.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Parcours des leçons (roadmap) */}
@@ -223,120 +192,134 @@ export const Courses: React.FC = () => {
             const status = progressData[lesson.number]?.status || 'not_started';
             const isCompleted = status === 'completed';
             const isInProgress = status === 'in_progress';
-            const ready = lessonHasVideo(lesson);
+            const ready = lessonReady(lesson);
             const isLast = index === lessons.length - 1;
             const Icon = THEME_ICONS[lesson.icon] ?? PlayCircle;
-            const disabled = isLocked || !ready;
 
             return (
-              <div key={lesson.id} className="relative flex gap-4">
-                {/* Rail : pastille numérotée + trait de liaison */}
-                <div className="flex flex-col items-center flex-shrink-0">
-                  <div
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white flex-shrink-0 relative shadow-lg ${
-                      isLocked
-                        ? 'bg-gray-300 shadow-none'
-                        : `bg-gradient-to-br ${lesson.gradient}`
-                    }`}
-                  >
-                    {isLocked ? (
-                      <Lock size={20} />
-                    ) : isCompleted ? (
-                      <CheckCircle2 size={26} />
-                    ) : (
-                      <Icon size={24} className="text-white" />
-                    )}
-                    {!isLocked && !isCompleted && (
-                      <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white text-gray-900 text-[11px] font-black flex items-center justify-center shadow">
-                        {lesson.number}
-                      </span>
-                    )}
+              <React.Fragment key={lesson.id}>
+                {/* Séparateur « À venir » avant la première leçon Prochainement */}
+                {index === firstComingSoon && firstComingSoon > 0 && (
+                  <div className="flex items-center gap-3 pb-4 pl-1">
+                    <span className="text-[11px] font-black text-gray-400 uppercase tracking-[0.18em]">
+                      À venir
+                    </span>
+                    <span className="flex-1 h-px bg-gray-200" />
+                    <span className="text-[10px] font-bold text-pink-500 bg-pink-50 px-2.5 py-1 rounded-full">
+                      Nouvelles leçons
+                    </span>
                   </div>
-                  {!isLast && (
+                )}
+
+                <div className="relative flex gap-4">
+                  {/* Rail : pastille + trait de liaison */}
+                  <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-[3px] flex-1 my-2 rounded-full ${
-                        isCompleted ? 'bg-green-300' : 'bg-pink-100'
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white flex-shrink-0 relative shadow-lg bg-gradient-to-br ${lesson.gradient} ${
+                        ready ? '' : 'opacity-60 shadow-none'
                       }`}
-                    />
-                  )}
-                </div>
-
-                {/* Carte cliquable de la leçon */}
-                <button
-                  onClick={() => handleOpenLesson(lesson)}
-                  disabled={disabled}
-                  className={`flex-1 mb-4 text-left rounded-3xl border p-4 transition-all ${
-                    isLocked
-                      ? 'bg-gray-50 border-gray-100 cursor-default'
-                      : ready
-                        ? 'bg-white border-pink-100/70 shadow-soft hover:shadow-md hover:border-pink-200 active:scale-[0.99]'
-                        : 'bg-white/70 border-gray-100 cursor-default'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-[10px] font-black uppercase tracking-wider ${
-                          isLocked ? 'text-gray-400' : 'text-pink-500'
-                        }`}
-                      >
-                        Leçon {lesson.number} · {lesson.theme}
-                      </p>
-                      <h3
-                        className={`font-display text-lg leading-tight mt-0.5 ${
-                          isLocked ? 'text-gray-500' : 'text-gray-900'
-                        }`}
-                      >
-                        {lesson.title}
-                      </h3>
-                    </div>
-
-                    {/* Statut / action */}
-                    <div className="flex-shrink-0">
-                      {isLocked ? (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-gray-400 bg-gray-200 px-2 py-1 rounded-full">
-                          <Lock size={10} /> Verrouillé
-                        </span>
-                      ) : isCompleted ? (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                          <CheckCircle2 size={11} /> Terminé
-                        </span>
-                      ) : ready ? (
-                        <div className="w-11 h-11 rounded-2xl bg-pink-500 text-white flex items-center justify-center shadow-md shadow-pink-500/30">
-                          <Play size={19} fill="currentColor" className="ml-0.5" />
-                        </div>
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 size={26} />
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                          Bientôt
+                        <Icon size={24} className="text-white" />
+                      )}
+                      {ready && !isCompleted && (
+                        <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white text-gray-900 text-[11px] font-black flex items-center justify-center shadow">
+                          {lesson.number}
+                        </span>
+                      )}
+                      {!ready && (
+                        <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center shadow">
+                          <Lock size={12} />
                         </span>
                       )}
                     </div>
+                    {!isLast && (
+                      <div
+                        className={`w-[3px] flex-1 my-2 rounded-full ${
+                          isCompleted ? 'bg-green-300' : ready ? 'bg-pink-100' : 'bg-gray-200'
+                        }`}
+                      />
+                    )}
                   </div>
 
-                  {/* Description (masquée si verrouillé) */}
-                  {isLocked ? (
-                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                      <Lock size={11} /> Se débloque 7 jours après l'achat
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-500 leading-relaxed mt-2">{lesson.description}</p>
-                  )}
+                  {/* Carte de la leçon */}
+                  <button
+                    onClick={() => handleOpenLesson(lesson)}
+                    disabled={!ready}
+                    className={`flex-1 mb-4 text-left rounded-3xl border p-4 transition-all ${
+                      ready
+                        ? 'bg-white border-pink-100/70 shadow-soft hover:shadow-md hover:border-pink-200 active:scale-[0.99]'
+                        : 'bg-white/60 border-dashed border-gray-300 cursor-default'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-[10px] font-black uppercase tracking-wider ${
+                            ready ? 'text-pink-500' : 'text-gray-400'
+                          }`}
+                        >
+                          {ready ? `Leçon ${lesson.number}` : 'Prochaine leçon'} · {lesson.theme}
+                        </p>
+                        <h3
+                          className={`font-display text-lg leading-tight mt-0.5 ${
+                            ready ? 'text-gray-900' : 'text-gray-500'
+                          }`}
+                        >
+                          {lesson.title}
+                        </h3>
+                      </div>
 
-                  {/* Pied de carte : appel à l'action */}
-                  {!isLocked && ready && !isCompleted && (
-                    <div className="mt-3 flex items-center gap-1 text-xs font-black text-pink-500">
-                      {isInProgress ? 'Reprendre la leçon' : 'Regarder la leçon'}
-                      <ChevronRight size={15} />
+                      {/* Statut / action */}
+                      <div className="flex-shrink-0">
+                        {isCompleted ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                            <CheckCircle2 size={11} /> Terminé
+                          </span>
+                        ) : ready ? (
+                          <div className="w-11 h-11 rounded-2xl bg-pink-500 text-white flex items-center justify-center shadow-md shadow-pink-500/30">
+                            <Play size={19} fill="currentColor" className="ml-0.5" />
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <Lock size={10} /> {lesson.eta || 'Bientôt'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {!isLocked && isCompleted && (
-                    <div className="mt-3 flex items-center gap-1 text-xs font-black text-green-600">
-                      Revoir la leçon
-                      <ChevronRight size={15} />
-                    </div>
-                  )}
-                </button>
-              </div>
+
+                    {/* Description */}
+                    <p
+                      className={`text-sm leading-relaxed mt-2 ${
+                        ready ? 'text-gray-500' : 'text-gray-400'
+                      }`}
+                    >
+                      {lesson.description}
+                    </p>
+
+                    {/* Pied de carte */}
+                    {ready && !isCompleted && (
+                      <div className="mt-3 flex items-center gap-1 text-xs font-black text-pink-500">
+                        {isInProgress ? 'Reprendre la leçon' : 'Regarder la leçon'}
+                        <ChevronRight size={15} />
+                      </div>
+                    )}
+                    {ready && isCompleted && (
+                      <div className="mt-3 flex items-center gap-1 text-xs font-black text-green-600">
+                        Revoir la leçon
+                        <ChevronRight size={15} />
+                      </div>
+                    )}
+                    {!ready && (
+                      <div className="mt-3 flex items-center gap-1 text-xs font-black text-gray-400">
+                        <Lock size={13} /> Débloquée prochainement
+                      </div>
+                    )}
+                  </button>
+                </div>
+              </React.Fragment>
             );
           })}
         </div>
@@ -361,8 +344,8 @@ export const Courses: React.FC = () => {
         </button>
       </div>
 
-      {/* Lecteur vidéo in-app (seulement si déverrouillé) */}
-      {activeLesson && activeLesson.video && !isLocked && (
+      {/* Lecteur vidéo in-app */}
+      {activeLesson && activeLesson.video && (
         <CourseVideoModal
           account={activeLesson.video.account}
           player={activeLesson.video.player}

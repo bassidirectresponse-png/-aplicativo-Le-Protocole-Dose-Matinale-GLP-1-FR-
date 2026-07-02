@@ -3,11 +3,14 @@
 // Chaque leçon = une vidéo VTurb / ConverteAI (lecteur vertical 9:16) qui
 // s'ouvre TOUJOURS dans l'application, jamais sur un site externe.
 //
-// COMMENT AJOUTER / REMPLACER UNE VIDÉO :
+// Les leçons avec une vidéo sont TOUJOURS accessibles.
+// Les leçons marquées `comingSoon: true` (vidéo pas encore prête) s'affichent
+// comme « Prochainement » : un teaser verrouillé qui donne envie de revenir.
+//
+// COMMENT PUBLIER UNE LEÇON « À VENIR » :
 // 1. Récupérez l'ID du lecteur VTurb (celui du <vturb-smartplayer id="vid-XXXX">,
 //    sans le préfixe « vid- »).
-// 2. Renseignez-le dans `vturb.player` de la leçon.
-// L'identifiant de compte (`COURSE_ACCOUNT`) est commun à toutes les vidéos.
+// 2. Renseignez-le dans `video` et passez `comingSoon` à `false`.
 
 /** Identifiant de compte ConverteAI (commun à toutes les vidéos du cours). */
 export const COURSE_ACCOUNT = 'b3a8e032-a485-4422-ae3b-d3823b0a8869';
@@ -33,11 +36,16 @@ export interface Lesson {
   gradient: string;
   /** Couleur d'accent (texte) du thème. */
   accent: string;
-  /** Vidéo VTurb de la leçon. `null` = « Bientôt disponible ». */
+  /** Vidéo VTurb de la leçon. `null` tant que la vidéo n'est pas publiée. */
   video: LessonVideo | null;
+  /** `true` = leçon « Prochainement » (teaser verrouillé). */
+  comingSoon?: boolean;
+  /** Petit texte d'attente affiché sur le teaser (ex: « Bientôt »). */
+  eta?: string;
 }
 
 export const lessons: Lesson[] = [
+  // ── Leçons disponibles (toujours accessibles) ─────────────────────────
   {
     id: 'lesson-1',
     number: 1,
@@ -98,12 +106,60 @@ export const lessons: Lesson[] = [
     accent: 'text-emerald-300',
     video: { account: COURSE_ACCOUNT, player: '6a332226d4dde971df314174' },
   },
+
+  // ── Leçons « Prochainement » (teasers verrouillés) ────────────────────
+  // Pour publier : ajoutez le `video` VTurb et passez `comingSoon` à false.
+  {
+    id: 'lesson-6',
+    number: 6,
+    title: 'Recettes Brûle-Graisse Avancées',
+    theme: 'Bonus',
+    description:
+      "De nouvelles boissons et recettes pour intensifier la combustion des graisses, semaine après semaine.",
+    icon: 'Flame',
+    gradient: 'from-[#3a0f0a] via-[#8a2d1d] to-[#d9603f]',
+    accent: 'text-orange-300',
+    video: null,
+    comingSoon: true,
+    eta: 'Bientôt',
+  },
+  {
+    id: 'lesson-7',
+    number: 7,
+    title: 'Le Rituel du Soir Anti-Fringales',
+    theme: 'Bonus',
+    description:
+      "La routine du soir qui coupe les envies de sucre et améliore le sommeil pour de meilleurs résultats.",
+    icon: 'Moon',
+    gradient: 'from-[#0f1440] via-[#2a2f8a] to-[#5b63d9]',
+    accent: 'text-indigo-300',
+    video: null,
+    comingSoon: true,
+    eta: 'Bientôt',
+  },
+  {
+    id: 'lesson-8',
+    number: 8,
+    title: 'Vos Questions, Nos Réponses',
+    theme: 'Communauté',
+    description:
+      "Une séance vidéo dédiée à vos questions les plus fréquentes pour lever tous vos derniers doutes.",
+    icon: 'MessagesSquare',
+    gradient: 'from-[#052e2a] via-[#0e6b60] to-[#2fada0]',
+    accent: 'text-teal-300',
+    video: null,
+    comingSoon: true,
+    eta: 'Bientôt',
+  },
 ];
 
-/** Nombre total de leçons. */
-export const totalLessons = lessons.length;
-
-/** Vrai si la leçon a une vidéo prête à être lue. */
-export function lessonHasVideo(lesson: Lesson): boolean {
-  return lesson.video != null;
+/** Vrai si la leçon a une vidéo publiée et accessible. */
+export function lessonReady(lesson: Lesson): boolean {
+  return !lesson.comingSoon && lesson.video != null;
 }
+
+/** Leçons disponibles (avec vidéo). Sert de dénominateur à la progression. */
+export const availableLessons = lessons.filter(lessonReady);
+
+/** Nombre de leçons disponibles (progression). */
+export const totalLessons = availableLessons.length;
