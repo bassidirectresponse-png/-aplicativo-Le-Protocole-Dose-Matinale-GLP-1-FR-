@@ -1,150 +1,109 @@
 // Cours vidéo du programme « Le Protocole Dose Matinale GLP-1 ».
 //
-// COMMENT AJOUTER VOS VIDÉOS :
-// Pour chaque leçon, collez simplement le lien dans le champ `videoUrl`.
-// Formats acceptés automatiquement :
-//   • YouTube   -> https://www.youtube.com/watch?v=XXXX  (ou youtu.be/XXXX, /shorts/XXXX)
-//   • Vimeo     -> https://vimeo.com/123456789
-//   • Fichier   -> https://.../ma-video.mp4 (ou .webm, .mov, .m3u8)
-//   • Autre     -> n'importe quel lien d'intégration (iframe)
-// Laissez `videoUrl: ''` (vide) tant que la vidéo n'est pas prête :
-// la leçon s'affichera comme « Bientôt disponible ».
+// Chaque leçon = une vidéo VTurb / ConverteAI (lecteur vertical 9:16) qui
+// s'ouvre TOUJOURS dans l'application, jamais sur un site externe.
 //
-// La vidéo s'ouvre TOUJOURS dans l'application (même page), jamais sur un site externe.
+// COMMENT AJOUTER / REMPLACER UNE VIDÉO :
+// 1. Récupérez l'ID du lecteur VTurb (celui du <vturb-smartplayer id="vid-XXXX">,
+//    sans le préfixe « vid- »).
+// 2. Renseignez-le dans `vturb.player` de la leçon.
+// L'identifiant de compte (`COURSE_ACCOUNT`) est commun à toutes les vidéos.
+
+/** Identifiant de compte ConverteAI (commun à toutes les vidéos du cours). */
+export const COURSE_ACCOUNT = 'b3a8e032-a485-4422-ae3b-d3823b0a8869';
+
+export interface LessonVideo {
+  /** Compte ConverteAI (voir COURSE_ACCOUNT). */
+  account: string;
+  /** ID du lecteur VTurb (sans le préfixe « vid- »). */
+  player: string;
+}
 
 export interface Lesson {
   id: string;
-  /** Numéro global de la leçon (1 à 10), utilisé pour la progression */
+  /** Numéro de la leçon (1..N), utilisé pour la progression. */
   number: number;
   title: string;
+  /** Court intitulé du thème (badge/eyebrow). */
+  theme: string;
   description: string;
-  /** Collez ici le lien de la vidéo. Vide = « Bientôt disponible ». */
-  videoUrl: string;
+  /** Nom de l'icône lucide-react (mapping dans Courses.tsx). */
+  icon: string;
+  /** Dégradé Tailwind de la pastille/numéro de la leçon. */
+  gradient: string;
+  /** Couleur d'accent (texte) du thème. */
+  accent: string;
+  /** Vidéo VTurb de la leçon. `null` = « Bientôt disponible ». */
+  video: LessonVideo | null;
 }
 
-export interface CourseModule {
-  id: string;
-  number: number;
-  title: string;
-  subtitle: string;
-  lessons: Lesson[];
-}
-
-export const courseModules: CourseModule[] = [
+export const lessons: Lesson[] = [
   {
-    id: 'module-1',
+    id: 'lesson-1',
     number: 1,
-    title: 'La Fin des Régimes',
-    subtitle: 'Bienvenue & état d\'esprit',
-    lessons: [
-      {
-        id: 'lesson-1',
-        number: 1,
-        title: 'Bienvenue dans votre nouvelle vie',
-        description: 'Commencez ici : découvrez comment le protocole va transformer votre rapport au poids, sans privation ni régime strict.',
-        videoUrl: '',
-      },
-      {
-        id: 'lesson-2',
-        number: 2,
-        title: 'Pourquoi vous avez échoué jusqu\'ici',
-        description: 'Ce n\'est pas votre faute. Comprenez les vraies raisons des échecs passés pour ne plus jamais les répéter.',
-        videoUrl: '',
-      },
-    ],
+    title: 'Pourquoi Votre Corps Est Bloqué',
+    theme: 'Comprendre',
+    description:
+      "La vraie raison pour laquelle la perte de poids vous résiste — et pourquoi ce n'est pas votre faute. Comprenez le blocage hormonal avant de le débloquer.",
+    icon: 'Brain',
+    gradient: 'from-[#2a1158] via-[#5b2a9d] to-[#9d6bdb]',
+    accent: 'text-violet-300',
+    video: { account: COURSE_ACCOUNT, player: '6a33225a20af52de24a9de06' },
   },
   {
-    id: 'module-2',
+    id: 'lesson-2',
     number: 2,
-    title: 'La Science de la Perte de Poids Naturelle',
-    subtitle: 'Ce qui se passe dans votre corps',
-    lessons: [
-      {
-        id: 'lesson-3',
-        number: 3,
-        title: 'Le secret du GLP-1 et du GIP',
-        description: 'Comment votre corps va brûler la graisse : le rôle des hormones GLP-1 et GIP et pourquoi le shot matinal les active naturellement.',
-        videoUrl: '',
-      },
-    ],
+    title: "Le Shot Complet et Comment Utiliser l'Application",
+    theme: 'Le protocole',
+    description:
+      "La recette exacte du Shot Matinal, pas à pas, et comment utiliser l'application au quotidien pour ne jamais vous perdre.",
+    icon: 'FlaskConical',
+    gradient: 'from-[#3b0a23] via-[#7e1d44] to-[#c4456f]',
+    accent: 'text-rose-300',
+    video: { account: COURSE_ACCOUNT, player: '6a332236cf79a2944003c45e' },
   },
   {
-    id: 'module-3',
+    id: 'lesson-3',
     number: 3,
-    title: 'Le Protocole en Pratique',
-    subtitle: 'Le cœur du programme',
-    lessons: [
-      {
-        id: 'lesson-4',
-        number: 4,
-        title: 'La Recette en Or : préparer votre Shot Matinal',
-        description: 'Les mesures exactes, le pas à pas et les erreurs à éviter pour préparer votre shot au sel rose et vinaigre de cidre.',
-        videoUrl: '',
-      },
-      {
-        id: 'lesson-5',
-        number: 5,
-        title: 'La Routine Parfaite : comment et quand le prendre',
-        description: 'Le bon moment, la bonne façon et la régularité qui font toute la différence sur vos résultats.',
-        videoUrl: '',
-      },
-    ],
+    title: 'Les 15 Premiers Jours',
+    theme: 'Le démarrage',
+    description:
+      "Votre feuille de route pour les 2 premières semaines : ce qui se passe dans votre corps, à quoi vous attendre et comment tenir le cap.",
+    icon: 'CalendarDays',
+    gradient: 'from-[#3a230a] via-[#7e4d1d] to-[#c48a45]',
+    accent: 'text-amber-300',
+    video: { account: COURSE_ACCOUNT, player: '6a33226e20af52de24a9de24' },
   },
   {
-    id: 'module-4',
+    id: 'lesson-4',
     number: 4,
-    title: 'Les Accélérateurs de Résultats',
-    subtitle: 'Aller plus loin, plus vite',
-    lessons: [
-      {
-        id: 'lesson-6',
-        number: 6,
-        title: 'Comment manger ce que vous aimez et continuer à mincir',
-        description: 'Les stratégies pour garder le plaisir de manger tout en restant en déficit calorique.',
-        videoUrl: '',
-      },
-      {
-        id: 'lesson-7',
-        number: 7,
-        title: 'Que faire si le poids stagne ?',
-        description: 'Les ajustements simples pour relancer la perte de poids quand la balance ne bouge plus.',
-        videoUrl: '',
-      },
-    ],
+    title: 'Taille, Cellulite et Peau Ferme',
+    theme: 'Le corps',
+    description:
+      "Les rituels ciblés pour affiner la taille, atténuer la cellulite et raffermir la peau pendant que vous perdez du poids.",
+    icon: 'Sparkles',
+    gradient: 'from-[#062c3e] via-[#0e5b71] to-[#2fa3ad]',
+    accent: 'text-cyan-300',
+    video: { account: COURSE_ACCOUNT, player: '6a3322463c053a877e77ef3b' },
   },
   {
-    id: 'module-5',
+    id: 'lesson-5',
     number: 5,
-    title: 'Bonus & Rituels Secrets',
-    subtitle: 'Vos avantages exclusifs',
-    lessons: [
-      {
-        id: 'lesson-8',
-        number: 8,
-        title: 'Bonus 1 — L\'Astuce du Café',
-        description: 'Peau ferme, sans relâchement : le geste à ajouter à votre café pour accompagner la perte de poids.',
-        videoUrl: '',
-      },
-      {
-        id: 'lesson-9',
-        number: 9,
-        title: 'Bonus 2 — Le Rituel Affinant pour la Taille',
-        description: '2 minutes par jour : le rituel ciblé pour affiner la taille et tonifier la silhouette.',
-        videoUrl: '',
-      },
-      {
-        id: 'lesson-10',
-        number: 10,
-        title: 'Prochaines étapes & accès à la Communauté Secrète',
-        description: 'Comment continuer après le protocole et rejoindre la communauté privée des membres.',
-        videoUrl: '',
-      },
-    ],
+    title: 'Un Résultat Pour Toujours',
+    theme: 'Le maintien',
+    description:
+      "Comment stabiliser votre nouveau poids et garder vos résultats à vie, sans effet yo-yo ni frustration.",
+    icon: 'Trophy',
+    gradient: 'from-[#052e1f] via-[#0e6b47] to-[#2fad78]',
+    accent: 'text-emerald-300',
+    video: { account: COURSE_ACCOUNT, player: '6a332226d4dde971df314174' },
   },
 ];
 
-/** Nombre total de leçons (toutes modules confondus) */
-export const totalLessons = courseModules.reduce((n, m) => n + m.lessons.length, 0);
+/** Nombre total de leçons. */
+export const totalLessons = lessons.length;
 
-/** Liste à plat de toutes les leçons, dans l'ordre */
-export const allLessons: Lesson[] = courseModules.flatMap(m => m.lessons);
+/** Vrai si la leçon a une vidéo prête à être lue. */
+export function lessonHasVideo(lesson: Lesson): boolean {
+  return lesson.video != null;
+}

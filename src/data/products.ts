@@ -70,7 +70,7 @@ export const products: ProductSummary[] = [
   {
     id: 'cours-video',
     title: 'Les Cours Vidéo',
-    subtitle: '5 modules · 10 leçons guidées',
+    subtitle: '5 leçons vidéo guidées',
     description: 'Le programme complet en vidéo, du mindset au protocole pas à pas.',
     badge: 'Formation',
     status: 'active',

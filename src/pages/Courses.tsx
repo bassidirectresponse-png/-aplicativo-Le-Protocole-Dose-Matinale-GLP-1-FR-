@@ -2,17 +2,38 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ChevronRight, Clock, CookingPot, Lock, Play, PlayCircle } from 'lucide-react';
-import { courseModules, totalLessons } from '../data/courseModules';
+import {
+  ArrowLeft,
+  Brain,
+  CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  CookingPot,
+  FlaskConical,
+  Lock,
+  Play,
+  PlayCircle,
+  Sparkles,
+  Trophy,
+} from 'lucide-react';
+import { lessons, totalLessons, lessonHasVideo } from '../data/courseModules';
 import type { Lesson } from '../data/courseModules';
-import { hasVideo } from '../lib/videoEmbed';
-import { VideoPlayer } from '../components/video/VideoPlayer';
+import { CourseVideoModal } from '../components/video/CourseVideoModal';
 
 // Les cours se débloquent ce nombre de jours après l'achat (création du compte).
 // Mettez une valeur élevée (ex: 9999) pour tout garder verrouillé,
 // ou 0 pour tout débloquer immédiatement.
 const UNLOCK_AFTER_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Mapping nom d'icône (data) -> composant lucide.
+const THEME_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
+  Brain,
+  FlaskConical,
+  CalendarDays,
+  Sparkles,
+  Trophy,
+};
 
 interface CourseProgress {
   step_number: number;
@@ -26,14 +47,15 @@ export const Courses: React.FC = () => {
   const [progressData, setProgressData] = useState<Record<number, CourseProgress>>({});
   const [loading, setLoading] = useState(true);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [openModule, setOpenModule] = useState<string>(courseModules[0]?.id ?? '');
 
   // ── Verrouillage temporisé : 7 jours après l'achat ──────────────────
   const createdAt = user?.created_at ? new Date(user.created_at) : null;
   const unlockAt = createdAt ? new Date(createdAt.getTime() + UNLOCK_AFTER_DAYS * DAY_MS) : null;
   const now = new Date();
   const isLocked = !unlockAt || now < unlockAt;
-  const daysLeft = unlockAt ? Math.max(0, Math.ceil((unlockAt.getTime() - now.getTime()) / DAY_MS)) : UNLOCK_AFTER_DAYS;
+  const daysLeft = unlockAt
+    ? Math.max(0, Math.ceil((unlockAt.getTime() - now.getTime()) / DAY_MS))
+    : UNLOCK_AFTER_DAYS;
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -87,8 +109,9 @@ export const Courses: React.FC = () => {
 
   const handleOpenLesson = (lesson: Lesson) => {
     if (isLocked) return; // verrouillé : on n'ouvre pas
+    if (!lessonHasVideo(lesson)) return; // vidéo pas encore prête
     setActiveLesson(lesson);
-    if (hasVideo(lesson.videoUrl) && progressData[lesson.number]?.status !== 'completed') {
+    if (progressData[lesson.number]?.status !== 'completed') {
       updateProgress(lesson.number, 'in_progress');
     }
   };
@@ -123,7 +146,9 @@ export const Courses: React.FC = () => {
           >
             <ArrowLeft size={18} /> Accueil
           </button>
-          <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">5 modules · 10 leçons guidées</p>
+          <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">
+            {totalLessons} leçons · Programme vidéo
+          </p>
           <h1 className="font-display text-3xl leading-tight mt-2">Les Cours Vidéo</h1>
           <p className="text-white/85 text-base leading-relaxed mt-3">
             Suivez les leçons dans l'ordre : chaque vidéo s'ouvre ici, dans l'application.
@@ -131,7 +156,9 @@ export const Courses: React.FC = () => {
           {!isLocked && (
             <div className="mt-5">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-white/80 uppercase">{completedCount}/{totalLessons} terminées</span>
+                <span className="text-xs font-bold text-white/80 uppercase">
+                  {completedCount}/{totalLessons} terminées
+                </span>
                 <span className="text-xs font-bold text-white/60">{pct}%</span>
               </div>
               <div className="w-full h-2.5 bg-white/15 rounded-full overflow-hidden">
@@ -157,7 +184,12 @@ export const Courses: React.FC = () => {
                 <h2 className="font-black text-lg">Vos cours arrivent bientôt</h2>
                 <p className="text-sm text-gray-300 leading-relaxed mt-1">
                   Les vidéos se débloquent <strong>7 jours après l'achat</strong>.
-                  {daysLeft > 0 && <> Encore <strong>{daysLeft} {daysLeft > 1 ? 'jours' : 'jour'}</strong>.</>}
+                  {daysLeft > 0 && (
+                    <>
+                      {' '}
+                      Encore <strong>{daysLeft} {daysLeft > 1 ? 'jours' : 'jour'}</strong>.
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -171,7 +203,8 @@ export const Courses: React.FC = () => {
               <div>
                 <h2 className="font-black text-lg">Avant de commencer</h2>
                 <p className="text-sm text-gray-300 leading-relaxed mt-1">
-                  Commencez par le Module 1, regardez chaque leçon dans l'ordre, puis appliquez le Shot Matinal.
+                  Regardez les leçons dans l'ordre, de « Pourquoi votre corps est bloqué » jusqu'au
+                  maintien de vos résultats.
                 </p>
               </div>
             </div>
@@ -179,117 +212,138 @@ export const Courses: React.FC = () => {
         )}
       </div>
 
-      {/* Modules en accordéon */}
-      <div className="px-5 mt-6 space-y-4">
-        {courseModules.map(module => {
-          const isOpen = openModule === module.id;
-          const moduleCompleted = module.lessons.filter(l => progressData[l.number]?.status === 'completed').length;
+      {/* Parcours des leçons (roadmap) */}
+      <div className="px-5 mt-7">
+        <p className="text-[11px] font-black text-pink-500 uppercase tracking-[0.18em] mb-4">
+          Votre parcours
+        </p>
 
-          return (
-            <div key={module.id} className="bg-white rounded-3xl border border-white shadow-soft overflow-hidden">
-              <button
-                onClick={() => setOpenModule(isOpen ? '' : module.id)}
-                className="w-full flex items-center gap-3 p-5 text-left"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center font-black text-lg flex-shrink-0 relative">
-                  {module.number}
-                  {isLocked && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gray-950 flex items-center justify-center">
-                      <Lock size={11} className="text-white" />
-                    </span>
+        <div>
+          {lessons.map((lesson, index) => {
+            const status = progressData[lesson.number]?.status || 'not_started';
+            const isCompleted = status === 'completed';
+            const isInProgress = status === 'in_progress';
+            const ready = lessonHasVideo(lesson);
+            const isLast = index === lessons.length - 1;
+            const Icon = THEME_ICONS[lesson.icon] ?? PlayCircle;
+            const disabled = isLocked || !ready;
+
+            return (
+              <div key={lesson.id} className="relative flex gap-4">
+                {/* Rail : pastille numérotée + trait de liaison */}
+                <div className="flex flex-col items-center flex-shrink-0">
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white flex-shrink-0 relative shadow-lg ${
+                      isLocked
+                        ? 'bg-gray-300 shadow-none'
+                        : `bg-gradient-to-br ${lesson.gradient}`
+                    }`}
+                  >
+                    {isLocked ? (
+                      <Lock size={20} />
+                    ) : isCompleted ? (
+                      <CheckCircle2 size={26} />
+                    ) : (
+                      <Icon size={24} className="text-white" />
+                    )}
+                    {!isLocked && !isCompleted && (
+                      <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white text-gray-900 text-[11px] font-black flex items-center justify-center shadow">
+                        {lesson.number}
+                      </span>
+                    )}
+                  </div>
+                  {!isLast && (
+                    <div
+                      className={`w-[3px] flex-1 my-2 rounded-full ${
+                        isCompleted ? 'bg-green-300' : 'bg-pink-100'
+                      }`}
+                    />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black text-pink-500 uppercase tracking-wider">Module {module.number}</p>
-                  <h3 className="font-display text-lg text-gray-900 leading-tight">{module.title}</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">{module.subtitle}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  {!isLocked && <span className="text-[10px] font-black text-gray-400">{moduleCompleted}/{module.lessons.length}</span>}
-                  <ChevronRight
-                    size={20}
-                    className={`text-pink-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}
-                  />
-                </div>
-              </button>
 
-              {isOpen && (
-                <div className="px-3 pb-3 space-y-2">
-                  {module.lessons.map(lesson => {
-                    const status = progressData[lesson.number]?.status || 'not_started';
-                    const isCompleted = status === 'completed';
-                    const isInProgress = status === 'in_progress';
-                    const ready = hasVideo(lesson.videoUrl);
-
-                    return (
-                      <button
-                        key={lesson.id}
-                        onClick={() => handleOpenLesson(lesson)}
-                        disabled={isLocked}
-                        className={`w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-colors ${
-                          isLocked ? 'bg-gray-50 cursor-default' : 'bg-[#fff7fb] hover:bg-pink-50'
+                {/* Carte cliquable de la leçon */}
+                <button
+                  onClick={() => handleOpenLesson(lesson)}
+                  disabled={disabled}
+                  className={`flex-1 mb-4 text-left rounded-3xl border p-4 transition-all ${
+                    isLocked
+                      ? 'bg-gray-50 border-gray-100 cursor-default'
+                      : ready
+                        ? 'bg-white border-pink-100/70 shadow-soft hover:shadow-md hover:border-pink-200 active:scale-[0.99]'
+                        : 'bg-white/70 border-gray-100 cursor-default'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-[10px] font-black uppercase tracking-wider ${
+                          isLocked ? 'text-gray-400' : 'text-pink-500'
                         }`}
                       >
-                        <div
-                          className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            isLocked
-                              ? 'bg-gray-200 text-gray-400'
-                              : isCompleted
-                                ? 'bg-green-100 text-green-600'
-                                : ready
-                                  ? 'bg-pink-500 text-white'
-                                  : 'bg-gray-100 text-gray-400'
-                          }`}
-                        >
-                          {isLocked ? (
-                            <Lock size={17} />
-                          ) : isCompleted ? (
-                            <CheckCircle2 size={20} />
-                          ) : ready ? (
-                            <Play size={18} fill="currentColor" className="ml-0.5" />
-                          ) : (
-                            <Clock size={16} />
-                          )}
+                        Leçon {lesson.number} · {lesson.theme}
+                      </p>
+                      <h3
+                        className={`font-display text-lg leading-tight mt-0.5 ${
+                          isLocked ? 'text-gray-500' : 'text-gray-900'
+                        }`}
+                      >
+                        {lesson.title}
+                      </h3>
+                    </div>
+
+                    {/* Statut / action */}
+                    <div className="flex-shrink-0">
+                      {isLocked ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-gray-400 bg-gray-200 px-2 py-1 rounded-full">
+                          <Lock size={10} /> Verrouillé
+                        </span>
+                      ) : isCompleted ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                          <CheckCircle2 size={11} /> Terminé
+                        </span>
+                      ) : ready ? (
+                        <div className="w-11 h-11 rounded-2xl bg-pink-500 text-white flex items-center justify-center shadow-md shadow-pink-500/30">
+                          <Play size={19} fill="currentColor" className="ml-0.5" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-black text-sm leading-tight ${isLocked ? 'text-gray-500' : 'text-gray-900'}`}>
-                            <span className="text-pink-400">{lesson.number}.</span> {lesson.title}
-                          </p>
-                          {isLocked ? (
-                            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                              <Lock size={11} /> Se débloque 7 jours après l'achat
-                            </p>
-                          ) : (
-                            <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{lesson.description}</p>
-                          )}
-                        </div>
-                        <div className="flex-shrink-0">
-                          {isLocked ? (
-                            <span className="text-[9px] font-black uppercase text-gray-400 bg-gray-200 px-2 py-1 rounded-full">Verrouillé</span>
-                          ) : isCompleted ? (
-                            <span className="text-[9px] font-black uppercase text-green-600 bg-green-100 px-2 py-1 rounded-full">Terminé</span>
-                          ) : isInProgress ? (
-                            <span className="text-[9px] font-black uppercase text-pink-600 bg-pink-100 px-2 py-1 rounded-full">En cours</span>
-                          ) : !ready ? (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                              <Clock size={10} /> Bientôt
-                            </span>
-                          ) : (
-                            <ChevronRight size={18} className="text-pink-300" />
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                          Bientôt
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description (masquée si verrouillé) */}
+                  {isLocked ? (
+                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                      <Lock size={11} /> Se débloque 7 jours après l'achat
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-500 leading-relaxed mt-2">{lesson.description}</p>
+                  )}
+
+                  {/* Pied de carte : appel à l'action */}
+                  {!isLocked && ready && !isCompleted && (
+                    <div className="mt-3 flex items-center gap-1 text-xs font-black text-pink-500">
+                      {isInProgress ? 'Reprendre la leçon' : 'Regarder la leçon'}
+                      <ChevronRight size={15} />
+                    </div>
+                  )}
+                  {!isLocked && isCompleted && (
+                    <div className="mt-3 flex items-center gap-1 text-xs font-black text-green-600">
+                      Revoir la leçon
+                      <ChevronRight size={15} />
+                    </div>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Raccourci vers la recette (toujours disponible) */}
-      <div className="px-5 mt-5">
+      <div className="px-5 mt-3">
         <button
           onClick={() => navigate('/recipes')}
           className="w-full bg-white border border-pink-100 rounded-3xl p-5 shadow-sm flex items-center justify-between gap-4"
@@ -308,11 +362,12 @@ export const Courses: React.FC = () => {
       </div>
 
       {/* Lecteur vidéo in-app (seulement si déverrouillé) */}
-      {activeLesson && !isLocked && (
-        <VideoPlayer
-          url={activeLesson.videoUrl}
+      {activeLesson && activeLesson.video && !isLocked && (
+        <CourseVideoModal
+          account={activeLesson.video.account}
+          player={activeLesson.video.player}
           title={`Leçon ${activeLesson.number} — ${activeLesson.title}`}
-          subtitle={activeLesson.description}
+          subtitle={activeLesson.theme}
           onClose={() => setActiveLesson(null)}
           onComplete={() => handleComplete(activeLesson)}
         />
